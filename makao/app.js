@@ -112,10 +112,14 @@
     return card.rank === 'K' && card.suit === 'spades';
   }
 
+  function isAttackKing(card) {
+    return card.rank === 'K' && (card.suit === 'hearts' || card.suit === 'spades');
+  }
+
   function attackValue(card) {
     if (card.rank === '2') return 2;
     if (card.rank === '3') return 3;
-    if (card.rank === 'K') return 5;
+    if (isAttackKing(card)) return 5;
     return 0;
   }
 
@@ -129,6 +133,11 @@
 
   function topCard(game) {
     return game.discard.length ? game.discard[game.discard.length - 1] : null;
+  }
+
+  function pendingSkipTarget(game) {
+    if (!game || game.pendingSkipCount <= 0) return null;
+    return game.pendingSkipTargetUserId ?? game.turnUserId ?? null;
   }
 
   function refillDeckIfNeeded(game) {
@@ -160,7 +169,7 @@
     if (isQueenSpades(card)) return true;
 
     if (game.pendingDraw > 0) return canStackAttack(card, top);
-    if (game.pendingSkipCount > 0) return card.rank === '4';
+    if (game.pendingSkipCount > 0 && game.turnUserId === pendingSkipTarget(game)) return card.rank === '4';
     if (game.pendingRequest) return card.rank === game.pendingRequest || card.rank === 'J';
     if (game.queenOpenTurn) return true;
 
@@ -208,6 +217,7 @@
       activeSuit: first ? first.suit : null,
       pendingDraw: 0,
       pendingSkipCount: 0,
+      pendingSkipTargetUserId: null,
       pendingRequest: null,
       queenOpenTurn: false,
       awaitingSuitPickUserId: null,
@@ -246,6 +256,12 @@
     const lead = selected[selected.length - 1];
     if (!canPlayCard(game, lead)) return [];
 
+    const count = selected.length;
+    const rank = selected[0].rank;
+    const baseAllowed = count === 1 || count === 3 || count === 4;
+    const requestPairAllowed = count === 2 && game.pendingRequest && rank === game.pendingRequest && REQUEST_RANKS.includes(rank);
+    if (!baseAllowed && !requestPairAllowed) return [];
+
     if (game.pendingRequest && selected[0].rank !== game.pendingRequest && selected[0].rank !== 'J') return [];
     return selected;
   }
@@ -272,6 +288,7 @@
     if (isQueenSpades(lead)) {
       game.pendingDraw = 0;
       game.pendingSkipCount = 0;
+      game.pendingSkipTargetUserId = null;
       game.pendingRequest = null;
       game.activeSuit = null;
       game.queenOpenTurn = true;
@@ -288,8 +305,9 @@
       return;
     }
 
-    if (game.pendingSkipCount > 0) {
+    if (game.pendingSkipCount > 0 && actorId === pendingSkipTarget(game)) {
       game.pendingSkipCount += cards.filter((c) => c.rank === '4').length;
+      game.pendingSkipTargetUserId = oppId;
       game.activeSuit = lead.suit;
       game.turnUserId = oppId;
       return;
@@ -325,6 +343,7 @@
 
     if (lead.rank === '4') {
       game.pendingSkipCount = cards.filter((c) => c.rank === '4').length;
+      game.pendingSkipTargetUserId = oppId;
       game.activeSuit = lead.suit;
       game.turnUserId = oppId;
       return;
@@ -366,8 +385,11 @@
   function drawActionOn(game, actorId) {
     const oppId = actorId === myId() ? opponentId() : myId();
 
-    if (game.pendingSkipCount > 0) {
+    if (game.pendingSkipCount > 0 && actorId === pendingSkipTarget(game)) {
       game.pendingSkipCount = Math.max(0, game.pendingSkipCount - 1);
+      if (game.pendingSkipCount === 0) {
+        game.pendingSkipTargetUserId = null;
+      }
       game.turnUserId = oppId;
       return;
     }
@@ -454,7 +476,12 @@
     }
 
     if (game.pendingSkipCount > 0) {
-      return game.turnUserId === myId() ? `Twoj ruch: czekanie ${game.pendingSkipCount}.` : `Ruch przeciwnika: czekanie ${game.pendingSkipCount}.`;
+      if (pendingSkipTarget(game) === myId()) {
+        return `Twoj ruch: czekanie ${game.pendingSkipCount}.`;
+      }
+      if (pendingSkipTarget(game) === opponentId()) {
+        return `Ruch przeciwnika: czekanie ${game.pendingSkipCount}.`;
+      }
     }
 
     if (game.pendingRequest) {
@@ -514,7 +541,7 @@
     el.drawBtn.disabled = drawDisabled;
     if (!game) {
       el.drawBtn.textContent = 'Dobierz';
-    } else if (game.pendingSkipCount > 0) {
+    } else if (game.pendingSkipCount > 0 && pendingSkipTarget(game) === myId()) {
       el.drawBtn.textContent = `Czekaj (${game.pendingSkipCount})`;
     } else if (game.pendingDraw > 0) {
       el.drawBtn.textContent = `Dobierz ${game.pendingDraw}`;
