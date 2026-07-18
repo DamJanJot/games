@@ -861,6 +861,198 @@ button {
   cursor: pointer;
 }
 
+.next-panel {
+  min-width: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.next-panel > span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.next-row {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px;
+  border-radius: var(--radius);
+  background: rgba(20, 32, 51, 0.08);
+}
+
+.next-ball {
+  width: 36px;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.1) 32%, transparent 42%),
+    var(--piece);
+  box-shadow:
+    inset 0 -8px 14px rgba(0, 0, 0, 0.18),
+    0 7px 14px rgba(19, 34, 56, 0.18);
+}
+
+.lines-board {
+  --lines-size: 7;
+  width: min(100%, 580px, calc(100dvh - 214px));
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(var(--lines-size), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--lines-size), minmax(0, 1fr));
+  gap: clamp(5px, 1.35vw, 8px);
+  padding: clamp(7px, 1.6vw, 10px);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.16)),
+    #132238;
+  box-shadow: var(--shadow);
+}
+
+.lines-cell {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.09);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.lines-cell:focus-visible,
+.block-cell:focus-visible,
+.block-piece:focus-visible {
+  outline: 3px solid #ffd166;
+  outline-offset: 2px;
+}
+
+.lines-cell.has-ball {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.line-ball {
+  width: 74%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.08) 32%, transparent 42%),
+    var(--piece);
+  box-shadow:
+    inset 0 -10px 18px rgba(0, 0, 0, 0.2),
+    0 12px 20px rgba(0, 0, 0, 0.22);
+}
+
+.lines-cell.is-selected .line-ball,
+.lines-cell.is-hint-source .line-ball {
+  outline: 4px solid #ffd166;
+  outline-offset: 3px;
+  transform: scale(0.9);
+}
+
+.lines-cell.is-hint-target {
+  background:
+    radial-gradient(circle, rgba(255, 209, 102, 0.86) 0 28%, rgba(255, 209, 102, 0.16) 29% 100%),
+    rgba(255, 255, 255, 0.09);
+}
+
+.blocks-board {
+  --blocks-size: 8;
+  width: min(100%, 580px, calc(100dvh - 214px));
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(var(--blocks-size), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--blocks-size), minmax(0, 1fr));
+  gap: clamp(4px, 1vw, 7px);
+  padding: clamp(7px, 1.6vw, 10px);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.16)),
+    #132238;
+  box-shadow: var(--shadow);
+}
+
+.block-cell {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.09);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.block-cell.is-hint {
+  background:
+    linear-gradient(145deg, rgba(255, 209, 102, 0.86), rgba(255, 209, 102, 0.46)),
+    rgba(255, 255, 255, 0.1);
+}
+
+.block-cube,
+.mini-block {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0)),
+    var(--piece);
+  box-shadow:
+    inset 0 -7px 12px rgba(0, 0, 0, 0.18),
+    0 8px 14px rgba(0, 0, 0, 0.2);
+}
+
+.block-cube {
+  width: 86%;
+  height: 86%;
+}
+
+.block-tray {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.block-piece {
+  min-width: 0;
+  min-height: 104px;
+  display: grid;
+  grid-template-columns: repeat(var(--piece-cols, 3), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--piece-rows, 3), minmax(0, 1fr));
+  gap: 5px;
+  place-content: center;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.76);
+  cursor: pointer;
+}
+
+.block-piece.is-selected {
+  border-color: #132238;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255, 209, 102, 0.78);
+}
+
+.block-piece.is-empty {
+  cursor: default;
+  opacity: 0.38;
+}
+
+.lines-board.is-blocked,
+.blocks-board.is-blocked {
+  animation: blockedShake 220ms ease-in-out;
+}
+
 .solitaire-shell {
   min-height: 100dvh;
   display: grid;
@@ -1376,6 +1568,37 @@ button {
   .game-board {
     width: min(calc(100vw - 20px), calc(100dvh - 246px));
     gap: 5px;
+  }
+
+  .lines-board,
+  .blocks-board {
+    width: min(calc(100vw - 20px), calc(100dvh - 246px), 370px);
+    gap: 4px;
+    padding: 6px;
+  }
+
+  .line-ball {
+    width: 72%;
+  }
+
+  .next-row {
+    min-height: 46px;
+    gap: 7px;
+    padding: 7px;
+  }
+
+  .next-ball {
+    width: 30px;
+  }
+
+  .block-tray {
+    gap: 7px;
+  }
+
+  .block-piece {
+    min-height: 86px;
+    gap: 4px;
+    padding: 7px;
   }
 
   .play-layout,

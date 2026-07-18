@@ -8,6 +8,8 @@ Statyczny katalog prostych gier logicznych.
 - `solitaire.html` - klasyczny pasjans.
 - `arrows.html` - kolorowe strzalki.
 - `sudoku.html` - mini sudoku 4x4.
+- `lines.html` - kolorowe linie z przesuwaniem kulek.
+- `blocks.html` - kolorowe bloki z czyszczeniem pelnych linii.
 
 ## Uruchomienie
 

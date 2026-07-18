@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Gierkoteka - Kolorowe Linie</title>
+    <meta name="description" content="Mobilna gra logiczna z przesuwaniem kolorowych kulek i czyszczeniem linii.">
+    <meta name="theme-color" content="#132238">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="game-shell lines-shell" data-lines>
+    <header class="game-top">
+        <a class="home-link" href="./" aria-label="Lista gier">
+            <span>GK</span>
+        </a>
+        <div class="title-group">
+            <p>Gierkoteka</p>
+            <h1>Kolorowe Linie</h1>
+        </div>
+        <div class="level-badge" aria-live="polite">
+            <span>Linia</span>
+            <strong data-lines-target>5</strong>
+        </div>
+    </header>
+
+    <section class="play-layout">
+        <section class="board-zone" aria-label="Gra w kolorowe linie">
+            <div class="meter-row" aria-live="polite">
+                <article>
+                    <span>Punkty</span>
+                    <strong data-lines-score>0</strong>
+                </article>
+                <article>
+                    <span>Ruchy</span>
+                    <strong data-lines-moves>0</strong>
+                </article>
+                <article>
+                    <span>Wolne</span>
+                    <strong data-lines-free>0</strong>
+                </article>
+            </div>
+
+            <div class="board-wrap">
+                <div class="lines-board" data-lines-board aria-label="Plansza linii"></div>
+            </div>
+
+            <p class="status-line" data-lines-status aria-live="polite">Wybierz kulke.</p>
+        </section>
+
+        <aside class="control-panel" aria-label="Panel gry">
+            <section class="next-panel" aria-label="Nastepne kulki">
+                <span>Nastepne</span>
+                <div class="next-row" data-lines-next></div>
+            </section>
+
+            <div class="action-row">
+                <button class="icon-button" type="button" data-lines-action="undo" title="Cofnij" aria-label="Cofnij">&#8630;</button>
+                <button class="icon-button" type="button" data-lines-action="restart" title="Od nowa" aria-label="Od nowa">&#8635;</button>
+                <button class="icon-button" type="button" data-lines-action="hint" title="Podpowiedz" aria-label="Podpowiedz">?</button>
+                <button class="icon-button accent" type="button" data-lines-action="new" title="Nowa gra" aria-label="Nowa gra">+</button>
+            </div>
+
+            <div class="segmented" role="group" aria-label="Trudnosc">
+                <button type="button" data-lines-difficulty="easy">Spokojnie</button>
+                <button type="button" data-lines-difficulty="normal">Normalnie</button>
+                <button type="button" data-lines-difficulty="hard">Trudniej</button>
+            </div>
+
+            <section class="mode-grid" aria-label="Tryby">
+                <a class="mode-tile" href="arrows.html">
+                    <strong>Strzalki</strong>
+                    <span>poziomy</span>
+                </a>
+                <button class="mode-tile is-active" type="button">
+                    <strong>Linie</strong>
+                    <span>aktywny</span>
+                </button>
+                <a class="mode-tile" href="blocks.html">
+                    <strong>Bloki</strong>
+                    <span>serie</span>
+                </a>
+            </section>
+
+            <section class="best-grid" aria-label="Wyniki">
+                <article>
+                    <span>Najlepszy</span>
+                    <strong data-lines-best>--</strong>
+                </article>
+                <article>
+                    <span>Usuniete</span>
+                    <strong data-lines-cleared>0</strong>
+                </article>
+            </section>
+        </aside>
+    </section>
+</main>
+<script src="lines.js" defer></script>
+</body>
+</html>

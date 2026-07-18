@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Gierkoteka - Bloki</title>
+    <meta name="description" content="Mobilna gra logiczna z kolorowymi blokami i czyszczeniem pelnych linii.">
+    <meta name="theme-color" content="#132238">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="game-shell blocks-shell" data-blocks>
+    <header class="game-top">
+        <a class="home-link" href="./" aria-label="Lista gier">
+            <span>GK</span>
+        </a>
+        <div class="title-group">
+            <p>Gierkoteka</p>
+            <h1>Bloki</h1>
+        </div>
+        <div class="level-badge" aria-live="polite">
+            <span>Plansza</span>
+            <strong data-blocks-size>8</strong>
+        </div>
+    </header>
+
+    <section class="play-layout">
+        <section class="board-zone" aria-label="Gra w bloki">
+            <div class="meter-row" aria-live="polite">
+                <article>
+                    <span>Punkty</span>
+                    <strong data-blocks-score>0</strong>
+                </article>
+                <article>
+                    <span>Linie</span>
+                    <strong data-blocks-lines>0</strong>
+                </article>
+                <article>
+                    <span>Ruchy</span>
+                    <strong data-blocks-moves>0</strong>
+                </article>
+            </div>
+
+            <div class="board-wrap">
+                <div class="blocks-board" data-blocks-board aria-label="Plansza blokow"></div>
+            </div>
+
+            <p class="status-line" data-blocks-status aria-live="polite">Wybierz klocek.</p>
+        </section>
+
+        <aside class="control-panel" aria-label="Panel gry">
+            <section class="block-tray" data-blocks-tray aria-label="Klocki"></section>
+
+            <div class="action-row">
+                <button class="icon-button" type="button" data-blocks-action="rotate" title="Obroc" aria-label="Obroc">&#8635;</button>
+                <button class="icon-button" type="button" data-blocks-action="restart" title="Od nowa" aria-label="Od nowa">&#8634;</button>
+                <button class="icon-button" type="button" data-blocks-action="hint" title="Podpowiedz" aria-label="Podpowiedz">?</button>
+                <button class="icon-button accent" type="button" data-blocks-action="new" title="Nowa gra" aria-label="Nowa gra">+</button>
+            </div>
+
+            <div class="segmented" role="group" aria-label="Trudnosc">
+                <button type="button" data-blocks-difficulty="easy">Spokojnie</button>
+                <button type="button" data-blocks-difficulty="normal">Normalnie</button>
+                <button type="button" data-blocks-difficulty="hard">Trudniej</button>
+            </div>
+
+            <section class="mode-grid" aria-label="Tryby">
+                <a class="mode-tile" href="arrows.html">
+                    <strong>Strzalki</strong>
+                    <span>poziomy</span>
+                </a>
+                <a class="mode-tile" href="lines.html">
+                    <strong>Linie</strong>
+                    <span>kulki</span>
+                </a>
+                <button class="mode-tile is-active" type="button">
+                    <strong>Bloki</strong>
+                    <span>aktywny</span>
+                </button>
+            </section>
+
+            <section class="best-grid" aria-label="Wyniki">
+                <article>
+                    <span>Najlepszy</span>
+                    <strong data-blocks-best>--</strong>
+                </article>
+                <article>
+                    <span>Zestaw</span>
+                    <strong data-blocks-set>1</strong>
+                </article>
+            </section>
+        </aside>
+    </section>
+</main>
+<script src="blocks.js" defer></script>
+</body>
+</html>
