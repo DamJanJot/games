@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Gierkoteka - Kolorowe Strzalki</title>
+    <meta name="description" content="Mobilna gra logiczna z kolorowymi strzalkami.">
+    <meta name="theme-color" content="#132238">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="game-shell" data-app>
+    <header class="game-top">
+        <a class="home-link" href="./" aria-label="Lista gier">
+            <span>GK</span>
+        </a>
+        <div class="title-group">
+            <p>Gierkoteka</p>
+            <h1>Kolorowe Strzalki</h1>
+        </div>
+        <div class="level-badge" aria-live="polite">
+            <span>Poziom</span>
+            <strong data-level-label>1</strong>
+        </div>
+    </header>
+
+    <section class="play-layout">
+        <section class="board-zone" aria-label="Gra">
+            <div class="meter-row" aria-live="polite">
+                <article>
+                    <span>Zostalo</span>
+                    <strong data-left-count>0</strong>
+                </article>
+                <article>
+                    <span>Ruchy</span>
+                    <strong data-moves>0</strong>
+                </article>
+                <article>
+                    <span>Punkty</span>
+                    <strong data-score>0</strong>
+                </article>
+            </div>
+
+            <div class="board-wrap">
+                <div class="game-board" data-board aria-label="Plansza strzalek"></div>
+            </div>
+
+            <p class="status-line" data-status aria-live="polite">Gotowe.</p>
+        </section>
+
+        <aside class="control-panel" aria-label="Panel gry">
+            <div class="action-row">
+                <button class="icon-button" type="button" data-action="undo" title="Cofnij" aria-label="Cofnij">&#8630;</button>
+                <button class="icon-button" type="button" data-action="restart" title="Od nowa" aria-label="Od nowa">&#8635;</button>
+                <button class="icon-button" type="button" data-action="hint" title="Podpowiedz" aria-label="Podpowiedz">?</button>
+                <button class="icon-button accent" type="button" data-action="next" title="Nastepny poziom" aria-label="Nastepny poziom">+</button>
+            </div>
+
+            <label class="level-control">
+                <span>Poziom</span>
+                <input data-level-input type="range" min="1" max="30" value="1">
+            </label>
+
+            <div class="segmented" role="group" aria-label="Trudnosc">
+                <button type="button" data-difficulty="easy">Spokojnie</button>
+                <button type="button" data-difficulty="normal">Normalnie</button>
+                <button type="button" data-difficulty="hard">Trudniej</button>
+            </div>
+
+            <section class="mode-grid" aria-label="Tryby">
+                <button class="mode-tile is-active" type="button" data-mode="arrows">
+                    <strong>Strzalki</strong>
+                    <span>aktywny</span>
+                </button>
+                <a class="mode-tile" href="sudoku.html">
+                    <strong>Sudoku</strong>
+                    <span>mini</span>
+                </a>
+                <button class="mode-tile" type="button" disabled>
+                    <strong>Bloki</strong>
+                    <span>w planie</span>
+                </button>
+            </section>
+
+            <section class="best-grid" aria-label="Wyniki">
+                <article>
+                    <span>Najlepszy</span>
+                    <strong data-best>--</strong>
+                </article>
+                <article>
+                    <span>Seria</span>
+                    <strong data-streak>0</strong>
+                </article>
+            </section>
+        </aside>
+    </section>
+</main>
+<script src="app.js" defer></script>
+</body>
+</html>

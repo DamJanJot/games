@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Gierkoteka - Sudoku 4x4</title>
+    <meta name="description" content="Proste mobilne sudoku 4x4.">
+    <meta name="theme-color" content="#132238">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="sudoku-shell" data-sudoku>
+    <header class="game-top">
+        <a class="home-link" href="./" aria-label="Lista gier">
+            <span>GK</span>
+        </a>
+        <div class="title-group">
+            <p>Gierkoteka</p>
+            <h1>Sudoku 4x4</h1>
+        </div>
+        <div class="level-badge" aria-live="polite">
+            <span>Plansza</span>
+            <strong data-sudoku-level>1</strong>
+        </div>
+    </header>
+
+    <section class="sudoku-layout">
+        <section class="sudoku-zone" aria-label="Sudoku">
+            <div class="sudoku-board" data-sudoku-board></div>
+            <p class="status-line" data-sudoku-status aria-live="polite">Wybierz pole.</p>
+        </section>
+
+        <aside class="control-panel sudoku-panel" aria-label="Panel sudoku">
+            <div class="sudoku-pad" aria-label="Cyfry">
+                <button type="button" data-number="1">1</button>
+                <button type="button" data-number="2">2</button>
+                <button type="button" data-number="3">3</button>
+                <button type="button" data-number="4">4</button>
+            </div>
+            <div class="action-row">
+                <button class="icon-button" type="button" data-sudoku-action="clear" title="Wyczysc" aria-label="Wyczysc">x</button>
+                <button class="icon-button" type="button" data-sudoku-action="hint" title="Podpowiedz" aria-label="Podpowiedz">?</button>
+                <button class="icon-button" type="button" data-sudoku-action="reset" title="Od nowa" aria-label="Od nowa">&#8635;</button>
+                <button class="icon-button accent" type="button" data-sudoku-action="next" title="Nastepna" aria-label="Nastepna">+</button>
+            </div>
+            <section class="best-grid" aria-label="Wyniki sudoku">
+                <article>
+                    <span>Wpisane</span>
+                    <strong data-sudoku-filled>0</strong>
+                </article>
+                <article>
+                    <span>Bledy</span>
+                    <strong data-sudoku-errors>0</strong>
+                </article>
+            </section>
+        </aside>
+    </section>
+</main>
+<script src="sudoku.js" defer></script>
+</body>
+</html>

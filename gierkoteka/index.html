@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Gierkoteka - gry logiczne</title>
+    <meta name="description" content="Lista prostych, kolorowych gier logicznych.">
+    <meta name="theme-color" content="#132238">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="hub-shell">
+    <header class="hub-top">
+        <span class="home-link brand-chip" aria-hidden="true">
+            <span>GK</span>
+        </span>
+        <div class="title-group">
+            <p>Repozytorium gier</p>
+            <h1>Gierkoteka</h1>
+        </div>
+        <a class="dashboard-link" href="../dashboard.php?panel=library" data-habitat-link hidden>Habitat</a>
+    </header>
+
+    <section class="games-grid" aria-label="Gry">
+        <a class="game-card is-ready" href="solitaire.html">
+            <div class="game-thumb solitaire-thumb" aria-hidden="true">
+                <span>A S</span><span>K H</span><span>Q D</span><span>J C</span>
+            </div>
+            <div class="game-card-body">
+                <span class="game-state">Nowe</span>
+                <h2>Pasjans</h2>
+                <p>Klasyczny uklad: dobieranie kart, cztery bazy na asy i siedem kolumn na stole.</p>
+            </div>
+            <div class="game-meta">
+                <span>1 albo 3 karty</span>
+                <span>karty</span>
+            </div>
+        </a>
+
+        <a class="game-card is-ready" href="arrows.html">
+            <div class="game-thumb arrows-thumb" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <div class="game-card-body">
+                <span class="game-state">Gotowe</span>
+                <h2>Kolorowe Strzalki</h2>
+                <p>Klikaj strzalki w takiej kolejnosci, zeby kazda mogla uciec prosto do krawedzi planszy.</p>
+            </div>
+            <div class="game-meta">
+                <span>1-30 poziomow</span>
+                <span>3 trudnosci</span>
+            </div>
+        </a>
+
+        <a class="game-card is-ready" href="sudoku.html">
+            <div class="game-thumb sudoku-thumb" aria-hidden="true">
+                <span>1</span><span></span><span>4</span><span></span>
+                <span></span><span>4</span><span></span><span>2</span>
+                <span>2</span><span></span><span>3</span><span></span>
+                <span></span><span>3</span><span></span><span>1</span>
+            </div>
+            <div class="game-card-body">
+                <span class="game-state">Mini</span>
+                <h2>Sudoku 4x4</h2>
+                <p>Spokojna wersja na telefon: wybierz pole, wpisz cyfre i sprawdz, czy kazdy rzad pasuje.</p>
+            </div>
+            <div class="game-meta">
+                <span>4x4</span>
+                <span>podpowiedz</span>
+            </div>
+        </a>
+
+        <article class="game-card is-planned">
+            <div class="game-thumb lines-thumb" aria-hidden="true">
+                <span></span><span></span><span></span><span></span>
+            </div>
+            <div class="game-card-body">
+                <span class="game-state">W planie</span>
+                <h2>Kolorowe Linie</h2>
+                <p>Przesuwanie elementow tak, zeby domykac linie albo kolory bez zapychania planszy.</p>
+            </div>
+            <div class="game-meta">
+                <span>grid</span>
+                <span>logiczne</span>
+            </div>
+        </article>
+
+        <article class="game-card is-planned">
+            <div class="game-thumb blocks-thumb" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <div class="game-card-body">
+                <span class="game-state">W planie</span>
+                <h2>Bloki</h2>
+                <p>Prosty wariant z kolorowymi klockami, kasowaniem ukladow i coraz ciasniejsza plansza.</p>
+            </div>
+            <div class="game-meta">
+                <span>kafelki</span>
+                <span>serie</span>
+            </div>
+        </article>
+    </section>
+</main>
+<script src="hub.js" defer></script>
+</body>
+</html>

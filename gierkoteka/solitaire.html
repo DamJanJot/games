@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Gierkoteka - Pasjans</title>
+    <meta name="description" content="Klasyczny pasjans z dobieraniem kart i czterema bazami asow.">
+    <meta name="theme-color" content="#132238">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="solitaire-shell" data-solitaire>
+    <header class="game-top">
+        <a class="home-link" href="./" aria-label="Lista gier">
+            <span>GK</span>
+        </a>
+        <div class="title-group">
+            <p>Gierkoteka</p>
+            <h1>Pasjans</h1>
+        </div>
+        <div class="level-badge" aria-live="polite">
+            <span>Tryb</span>
+            <strong data-solitaire-mode>--</strong>
+        </div>
+    </header>
+
+    <section class="solitaire-menu" data-solitaire-menu aria-label="Tryb gry">
+        <h2>Choose Game Mode</h2>
+        <div class="solitaire-mode-grid">
+            <button type="button" data-solitaire-start="easy">
+                <strong>Easy</strong>
+                <span>Dobieraj 1</span>
+                <em>A</em>
+            </button>
+            <button type="button" data-solitaire-start="medium">
+                <strong>Medium</strong>
+                <span>Dobieraj 3</span>
+                <em>A 2 3</em>
+            </button>
+            <button type="button" data-solitaire-start="hard">
+                <strong>Hard</strong>
+                <span>1 obieg</span>
+                <em>A K Q J</em>
+            </button>
+        </div>
+    </section>
+
+    <section class="solitaire-game" data-solitaire-game hidden>
+        <section class="klondike-top" aria-label="Stosy pasjansa">
+            <div class="deal-row">
+                <button class="card-slot stock-slot" type="button" data-solitaire-stock aria-label="Stos dobierania"></button>
+                <button class="card-slot waste-slot" type="button" data-solitaire-waste aria-label="Karta odkryta"></button>
+            </div>
+            <div class="foundation-row" data-solitaire-foundations aria-label="Bazy asow"></div>
+        </section>
+        <div class="solitaire-toolbar">
+            <article>
+                <span>Ruchy</span>
+                <strong data-solitaire-moves>0</strong>
+            </article>
+            <article>
+                <span>Bazy</span>
+                <strong data-solitaire-done>0/52</strong>
+            </article>
+            <article>
+                <span>Stos</span>
+                <strong data-solitaire-stock-count>0</strong>
+            </article>
+            <button class="icon-button" type="button" data-solitaire-reset title="Nowa gra" aria-label="Nowa gra">&#8635;</button>
+        </div>
+        <div class="solitaire-board" data-solitaire-board aria-label="Plansza pasjansa"></div>
+        <p class="status-line" data-solitaire-status aria-live="polite">Wybierz karte.</p>
+    </section>
+</main>
+<script src="solitaire.js" defer></script>
+</body>
+</html>

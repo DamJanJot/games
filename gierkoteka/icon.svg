@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Gierkoteka">
+  <rect width="128" height="128" rx="24" fill="#132238"/>
+  <rect x="18" y="18" width="40" height="40" rx="10" fill="#ef476f"/>
+  <rect x="70" y="18" width="40" height="40" rx="10" fill="#25a18e"/>
+  <rect x="18" y="70" width="40" height="40" rx="10" fill="#f28f3b"/>
+  <rect x="70" y="70" width="40" height="40" rx="10" fill="#118ab2"/>
+  <path d="M32 38h15m-7-7 8 7-8 7" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M90 32v15m7-7-7 8-7-8" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M44 90H29m7-7-8 7 8 7" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M90 96V81m7 7-7-8-7 8" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

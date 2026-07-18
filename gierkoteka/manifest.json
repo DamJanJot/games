@@ -1,0 +1,17 @@
+{
+  "name": "Gierkoteka",
+  "short_name": "Gierki",
+  "description": "Kolorowy katalog prostych gier logicznych.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5fbff",
+  "theme_color": "#132238",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
