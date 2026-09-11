@@ -1,18 +1,37 @@
-# <h1> Gieroteka </h1>
+# Gieroteka
 
+Zbiór przeglądarkowych gier i eksperymentów logicznych. Repozytorium zawiera statyczną Gierotekę oraz sieciową wersję gry Makao opartą na PHP i bazie danych.
 
+![Gieroteka](https://github.com/user-attachments/assets/916ca4f7-6be6-4825-87fd-c4a70cbb0a93)
 
-<img width="1919" height="476" alt="image" src="https://github.com/user-attachments/assets/916ca4f7-6be6-4825-87fd-c4a70cbb0a93" />
+## Podgląd
 
-<h2 align="end"> <a href="https://code-d.j.pl/game/"> Link ↗️ </a> </h2>
+[Otwórz Gierotekę](https://code-d.j.pl/game/)
 
----
+## Zawartość
 
+- `gierkoteka/` — hub gier napisany w HTML, CSS i JavaScript
+- Sudoku
+- Pasjans
+- gry logiczne Blocks, Lines i Arrows
+- `makao/` — gra karciana z backendem PHP, API i zapisem stanu w MySQL
 
-# Makao
+## Uruchomienie lokalne
 
+Gieroteka nie wymaga procesu budowania. Uruchom lokalny serwer w katalogu repozytorium:
 
+```bash
+php -S localhost:8000
+```
 
-<a href=""> Link </a>
+Następnie otwórz `http://localhost:8000/gierkoteka/`.
 
----
+Makao wymaga PHP, MySQL oraz lokalnego pliku konfiguracyjnego utworzonego na podstawie `makao/config.example.php`. Schemat bazy znajduje się w `makao/setup.sql`.
+
+## Technologie
+
+HTML, CSS, JavaScript, PHP i MySQL.
+
+## Licencja
+
+Projekt jest dostępny na licencji [MIT](LICENSE).
