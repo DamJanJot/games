@@ -417,6 +417,43 @@ button {
   color: #ef476f;
 }
 
+.party-thumb {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  gap: 8px;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 80% 16%, rgba(255, 209, 102, 0.34), transparent 26%),
+    linear-gradient(145deg, #132238, #493275);
+}
+
+.party-thumb span {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 3px solid rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+  color: #ffffff;
+  background: #7c5cff;
+  font-weight: 950;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.22);
+}
+
+.party-thumb span:nth-child(2) {
+  background: #ef476f;
+  transform: translateY(18px);
+}
+
+.party-thumb span:nth-child(3) {
+  background: #25a18e;
+  transform: translateY(-12px);
+}
+
+.party-thumb span:nth-child(4) {
+  background: #f28f3b;
+  transform: translateY(12px);
+}
+
 .play-layout {
   min-width: 0;
   width: 100%;
