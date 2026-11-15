@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/gierkoteka/party/lib.php';
+require dirname(__DIR__) . '/gierkoteka/party/quiz.php';
 
 $failures = [];
 
@@ -26,6 +27,12 @@ $code = party_generate_room_code(static fn(string $candidate): bool => false);
 check(strlen($code) === 6, 'długość kodu pokoju');
 check((bool)preg_match('/^[A-HJ-NP-Z2-9]{6}$/', $code), 'alfabet kodu pokoju');
 check(party_player_color(0) === party_player_color(count(PARTY_PLAYER_COLORS)), 'cykliczny wybór koloru');
+check(count(party_quiz_questions()) === 5, 'liczba pytań przykładowego quizu');
+check(party_quiz_question(1) !== null, 'pobranie pytania quizu');
+check(party_quiz_question(999) === null, 'brak nieznanego pytania quizu');
+check(party_quiz_score(false, 100) === 0, 'brak punktów za błędną odpowiedź');
+check(party_quiz_score(true, 0) === 1500, 'maksymalny wynik za natychmiastową odpowiedź');
+check(party_quiz_score(true, PARTY_QUIZ_LIMIT_MS) === 1000, 'minimalny wynik za poprawną odpowiedź');
 
 if ($failures) {
     fwrite(STDERR, "Niepowodzenia:\n- " . implode("\n- ", $failures) . "\n");

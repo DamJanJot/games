@@ -22,7 +22,7 @@ Pierwsza wersja obsłuży dwa sposoby prowadzenia rozgrywki:
 
 ## Etapy
 
-### 1. Fundament pokoju — rozpoczęty
+### 1. Fundament pokoju — zaimplementowany lokalnie
 
 - utworzenie pokoju przez gospodarza;
 - wybór trybu: wspólny ekran albo same telefony;
@@ -32,7 +32,9 @@ Pierwsza wersja obsłuży dwa sposoby prowadzenia rozgrywki:
 - ponowne wejście do pokoju z tego samego urządzenia;
 - opuszczenie pokoju i automatyczne przekazanie roli gospodarza.
 
-### 2. Quiz — pierwszy pełny test
+Stan: kod i test integracyjny są gotowe. Test na izolowanym MariaDB 10.4 objął utworzenie pokoju, dwóch graczy, gotowość, synchronizację oraz przekazanie gospodarza. Weryfikacja na prawdziwych telefonach i produkcyjnej konfiguracji pozostaje osobnym krokiem.
+
+### 2. Quiz — grywalna wersja lokalna
 
 - kreator prostego zestawu pytań;
 - pytanie i 2–4 odpowiedzi;
@@ -40,6 +42,8 @@ Pierwsza wersja obsłuży dwa sposoby prowadzenia rozgrywki:
 - limit czasu i blokada wielokrotnej odpowiedzi;
 - punkty za poprawność oraz opcjonalny bonus za szybkość;
 - ekran wyniku rundy.
+
+Stan: działa zestaw pięciu pytań, zegar serwerowy, pojedyncza odpowiedź gracza, automatyczne zamknięcie pytania, punkty 1000–1500 za poprawną odpowiedź oraz ranking. Pełny test dwóch sesji przeszedł wszystkie pięć pytań, zapisał 10 odpowiedzi i pozostawił 0 nienaliczonych wyników.
 
 Quiz będzie pierwszą grą, ponieważ najszybciej sprawdzi synchronizację, sterowanie telefonami, wynik rundy i ranking całego turnieju.
 
@@ -87,3 +91,13 @@ Każda gra dostanie adapter zwracający punkty w tym samym formacie:
 ## Kryterium pierwszej wersji testowej
 
 Pierwszy kamień milowy jest gotowy, gdy gospodarz tworzy pokój, trzy telefony dołączają linkiem lub kodem, każdy widzi tę samą listę graczy, a po odświeżeniu wszyscy wracają do właściwego pokoju. Następnie dokładamy Quiz i dopiero na nim potwierdzamy naliczanie punktów.
+
+## Test lokalny
+
+Po uruchomieniu aplikacji z testową bazą można wykonać pełny przepływ poleceniem:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tests\party_api_integration.ps1
+```
+
+Skrypt nie korzysta z produkcji. Tworzy dwie sesje, rozgrywa pięć pytań, sprawdza ranking i potwierdza przekazanie roli gospodarza.

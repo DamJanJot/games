@@ -2,6 +2,7 @@
 // Skopiuj jako config.php tylko wtedy, gdy hosting nie udostępnia zmiennych DB_*.
 return [
     'db_host' => 'localhost',
+    'db_port' => 3306,
     'db_name' => 'twoja_baza',
     'db_user' => 'twoj_uzytkownik',
     'db_pass' => 'twoje_haslo',

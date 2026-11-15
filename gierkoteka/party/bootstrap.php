@@ -48,9 +48,11 @@ function party_env_value(string $key, array $fileValues, ?string $default = null
 
 function party_connect(array $config): PDO
 {
+    $port = max(1, min(65535, (int)($config['db_port'] ?? 3306)));
     $dsn = sprintf(
-        'mysql:host=%s;dbname=%s;charset=utf8mb4',
+        'mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
         $config['db_host'],
+        $port,
         $config['db_name']
     );
 
@@ -80,6 +82,7 @@ function party_get_pdo(): array
 
     $fileValues = party_parse_env_file(dirname(__DIR__, 2) . '/.env');
     $host = party_env_value('PARTY_DB_HOST', $fileValues) ?? party_env_value('DB_HOST', $fileValues);
+    $port = party_env_value('PARTY_DB_PORT', $fileValues) ?? party_env_value('DB_PORT', $fileValues, '3306');
     $name = party_env_value('PARTY_DB_NAME', $fileValues) ?? party_env_value('DB_NAME', $fileValues);
     $user = party_env_value('PARTY_DB_USER', $fileValues) ?? party_env_value('DB_USER', $fileValues);
     $pass = party_env_value('PARTY_DB_PASS', $fileValues) ?? party_env_value('DB_PASS', $fileValues, '');
@@ -92,6 +95,7 @@ function party_get_pdo(): array
         return [
             'pdo' => party_connect([
                 'db_host' => $host,
+                'db_port' => (int)$port,
                 'db_name' => $name,
                 'db_user' => $user,
                 'db_pass' => $pass,
@@ -143,6 +147,70 @@ CREATE TABLE IF NOT EXISTS party_players (
     UNIQUE KEY uniq_party_player_seat (room_id, seat),
     INDEX idx_party_players_room_status (room_id, status),
     INDEX idx_party_players_last_seen (last_seen_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci
+SQL);
+
+    $columnQuery = $pdo->prepare(
+        "SELECT COUNT(*)
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'party_players' AND COLUMN_NAME = 'is_ready'"
+    );
+    $columnQuery->execute();
+    if ((int)$columnQuery->fetchColumn() === 0) {
+        $pdo->exec("ALTER TABLE party_players ADD COLUMN is_ready TINYINT(1) NOT NULL DEFAULT 0 AFTER status");
+    }
+
+    $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS party_rounds (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    room_id BIGINT UNSIGNED NOT NULL,
+    round_number INT UNSIGNED NOT NULL,
+    game_key VARCHAR(40) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    current_step INT UNSIGNED NOT NULL DEFAULT 0,
+    config_json JSON NULL,
+    state_json JSON NULL,
+    started_at DATETIME(3) NULL,
+    ends_at DATETIME(3) NULL,
+    finished_at DATETIME(3) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_party_rounds_room FOREIGN KEY (room_id) REFERENCES party_rooms(id) ON DELETE CASCADE,
+    UNIQUE KEY uniq_party_room_round (room_id, round_number),
+    INDEX idx_party_rounds_room_status (room_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci
+SQL);
+
+    $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS party_round_scores (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    round_id BIGINT UNSIGNED NOT NULL,
+    player_id BIGINT UNSIGNED NOT NULL,
+    points INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_party_round_scores_round FOREIGN KEY (round_id) REFERENCES party_rounds(id) ON DELETE CASCADE,
+    CONSTRAINT fk_party_round_scores_player FOREIGN KEY (player_id) REFERENCES party_players(id) ON DELETE CASCADE,
+    UNIQUE KEY uniq_party_round_player_score (round_id, player_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci
+SQL);
+
+    $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS party_quiz_answers (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    round_id BIGINT UNSIGNED NOT NULL,
+    player_id BIGINT UNSIGNED NOT NULL,
+    question_index INT UNSIGNED NOT NULL,
+    answer_index TINYINT UNSIGNED NOT NULL,
+    is_correct TINYINT(1) NOT NULL DEFAULT 0,
+    points INT NOT NULL DEFAULT 0,
+    points_applied TINYINT(1) NOT NULL DEFAULT 0,
+    response_ms INT UNSIGNED NOT NULL DEFAULT 0,
+    answered_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    CONSTRAINT fk_party_quiz_answers_round FOREIGN KEY (round_id) REFERENCES party_rounds(id) ON DELETE CASCADE,
+    CONSTRAINT fk_party_quiz_answers_player FOREIGN KEY (player_id) REFERENCES party_players(id) ON DELETE CASCADE,
+    UNIQUE KEY uniq_party_quiz_answer (round_id, player_id, question_index),
+    INDEX idx_party_quiz_question (round_id, question_index)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci
 SQL);
 }

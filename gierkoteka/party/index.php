@@ -83,7 +83,7 @@
             </div>
         </div>
 
-        <div class="room-layout">
+        <div class="room-layout" data-room-stage="lobby">
             <section class="lobby-card">
                 <div class="section-heading">
                     <div>
@@ -94,6 +94,7 @@
                 </div>
                 <ul class="player-list" data-player-list></ul>
                 <p class="empty-players" data-empty-players>Zaproś pierwszego gracza linkiem lub kodem.</p>
+                <button class="secondary-button ready-button" type="button" data-ready-button>Jestem gotowy</button>
             </section>
 
             <aside class="host-card">
@@ -105,14 +106,51 @@
                     <strong>Quiz</strong>
                     <p>Pytania, odpowiedzi, limit czasu i pierwsza wspólna punktacja.</p>
                 </div>
-                <button class="primary-button" type="button" disabled data-start-button>Start turnieju — wkrótce</button>
+                <button class="primary-button" type="button" disabled data-start-button>Uruchom Quiz</button>
+                <p class="start-requirements" data-start-requirements>Potrzeba minimum dwóch gotowych graczy.</p>
                 <button class="text-button" type="button" data-leave>Opuść pokój</button>
             </aside>
+        </div>
+
+        <div class="quiz-layout" data-room-stage="quiz" hidden>
+            <section class="quiz-card">
+                <div class="quiz-progress">
+                    <span data-quiz-progress>Pytanie 1/5</span>
+                    <strong data-quiz-timer>20</strong>
+                    <span data-quiz-answers-count>0/0 odpowiedzi</span>
+                </div>
+                <h2 class="quiz-question" data-quiz-question></h2>
+                <div class="quiz-answers" data-quiz-answers></div>
+                <div class="quiz-result" data-quiz-result hidden>
+                    <strong data-quiz-result-title>Wynik pytania</strong>
+                    <p data-quiz-explanation></p>
+                    <p class="quiz-your-points" data-quiz-your-points></p>
+                </div>
+                <p class="quiz-waiting" data-quiz-waiting></p>
+                <button class="primary-button quiz-advance" type="button" data-quiz-advance hidden>Pokaż wyniki</button>
+            </section>
+
+            <aside class="score-card">
+                <span class="eyebrow">Ranking turnieju</span>
+                <ol class="score-list" data-score-list></ol>
+                <button class="text-button" type="button" data-leave>Opuść pokój</button>
+            </aside>
+        </div>
+
+        <div class="final-card" data-room-stage="results" hidden>
+            <span class="eyebrow">Koniec pierwszej gry</span>
+            <h2>Wyniki Quizu</h2>
+            <p>To pierwszy działający moduł turnieju. Kolejne gry będą korzystać z tej samej tabeli punktów.</p>
+            <ol class="score-list score-list--final" data-final-score-list></ol>
+            <div class="final-actions">
+                <button class="small-button" type="button" data-copy-link>Kopiuj link</button>
+                <button class="text-button" type="button" data-leave>Opuść pokój</button>
+            </div>
         </div>
     </section>
 
     <p class="party-message" role="status" aria-live="polite" data-message></p>
 </main>
-<script src="party.js" defer></script>
+<script src="party-app.js" defer></script>
 </body>
 </html>

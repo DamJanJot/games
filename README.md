@@ -11,7 +11,7 @@ Zbiór przeglądarkowych gier i eksperymentów logicznych. Repozytorium zawiera 
 ## Zawartość
 
 - `gierkoteka/` — hub gier napisany w HTML, CSS i JavaScript
-- `gierkoteka/party/` — rozwijana poczekalnia turniejowa z pokojami, kodami zaproszeń i synchronizacją graczy
+- `gierkoteka/party/` — poczekalnia turniejowa z gotowością graczy oraz grywalnym Quizem, zegarem i wspólną punktacją
 - Sudoku
 - Pasjans
 - gry logiczne Blocks, Lines i Arrows
@@ -29,7 +29,7 @@ Następnie otwórz `http://localhost:8000/gierkoteka/`.
 
 Makao wymaga PHP, MySQL oraz lokalnego pliku konfiguracyjnego utworzonego na podstawie `makao/config.example.php`. Schemat bazy znajduje się w `makao/setup.sql`.
 
-Tryb Party wymaga PHP i MySQL. Może użyć tych samych zmiennych `DB_*` co Makao albo osobnych `PARTY_DB_*`. Plan kolejnych etapów znajduje się w [`docs/PARTY_MODE_ROADMAP.md`](docs/PARTY_MODE_ROADMAP.md).
+Tryb Party wymaga PHP i MySQL. Może użyć tych samych zmiennych `DB_*` co Makao albo osobnych `PARTY_DB_*` (w tym opcjonalnego `PARTY_DB_PORT`). Plan kolejnych etapów znajduje się w [`docs/PARTY_MODE_ROADMAP.md`](docs/PARTY_MODE_ROADMAP.md).
 
 ## Technologie
 
