@@ -12,7 +12,7 @@ Pierwsza wersja obsłuży dwa sposoby prowadzenia rozgrywki:
 ## Decyzje techniczne
 
 - Backend: PHP 8.1+ i MySQL, zgodnie z obecnym hostingiem.
-- Baza Trybu Party jest wskazywana jawnie przez `PARTY_DB_*` lub lokalny `party/config.php`. Przy limicie jednej bazy wariant `config.shared.example.php` wymaga kopii i podania jej nazwy; bez tego wspólne `DB_*` pozostają zablokowane. Moduł tworzy tabele `gk_party_*`, których nazwy nie kolidują ze starszymi `party_*`. Przed pierwszym wywołaniem API trzeba sprawdzić kopię i docelową nazwę bazy.
+- Baza Trybu Party jest wskazywana jawnie przez `PARTY_DB_*` lub lokalny `party/config.php`. Przy limicie jednej bazy wariant `config.shared.example.php` wymaga kopii i podania jej nazwy; bez tego wspólna baza pozostaje zablokowana. Po aktywacji poświadczenia są odczytywane z prywatnego `_server-config/server-config.php` używanego przez portal, a `DB_*` służą jako wariant dla hostów bez tego pliku. Moduł tworzy tabele `gk_party_*`, których nazwy nie kolidują ze starszymi `party_*`; nie dotyka też dawnego `runtime/party-games`. Przed pierwszym wywołaniem API trzeba sprawdzić kopię i docelową nazwę bazy.
 - Synchronizacja: lekkie odpytywanie API co około 2 sekundy. WebSockety nie są wymagane na pierwszą wersję.
 - Pokój: sześci znakowy kod bez mylących znaków, np. `7KPM2R`.
 - Tożsamość: losowy token gracza. W bazie przechowywany jest wyłącznie jego skrót SHA-256.

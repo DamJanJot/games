@@ -59,6 +59,24 @@ check(party_shared_db_config([
     'DB_NAME' => 'shared-database',
     'DB_USER' => 'shared-user',
 ], '') === null, 'wspólna baza wymaga jawnej nazwy z kopii');
+check(party_uses_shared_db(
+    ['db_name' => 'private-database'],
+    ['DB_NAME' => 'stale-database'],
+    ['DB_NAME' => 'private-database']
+), 'osobna konfiguracja nie może ominąć ochrony prywatnej bazy');
+$privateShared = party_shared_db_config(
+    ['DB_HOST' => 'stale-host', 'DB_NAME' => 'stale-database', 'DB_USER' => 'stale-user', 'DB_PASS' => 'stale-pass'],
+    'private-database',
+    ['DB_HOST' => 'private-host', 'DB_NAME' => 'private-database', 'DB_USER' => 'private-user', 'DB_PASS' => 'private-pass']
+);
+check($privateShared !== null && $privateShared['db_host'] === 'private-host'
+    && $privateShared['db_user'] === 'private-user' && $privateShared['db_pass'] === 'private-pass',
+    'prywatny server-config ma pierwszeństwo przed nieaktualnym .env');
+check(party_shared_db_config(
+    ['DB_HOST' => 'stale-host', 'DB_NAME' => 'stale-database', 'DB_USER' => 'stale-user'],
+    'stale-database',
+    ['DB_HOST' => 'private-host', 'DB_NAME' => 'private-database', 'DB_USER' => 'private-user']
+) === null, 'nazwa z pliku aktywującego musi odpowiadać prywatnej konfiguracji');
 
 $runtimeFiles = ['bootstrap.php', 'api-v2.php', 'tournament.php', 'setup.sql'];
 $legacyTablePattern = '/\bparty_(?:rooms|players|rounds|round_scores|quiz_answers|higher_lower_answers)\b/';

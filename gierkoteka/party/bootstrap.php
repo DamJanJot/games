@@ -46,6 +46,21 @@ function party_env_value(string $key, array $fileValues, ?string $default = null
     return $value === null || $value === '' ? $default : (string)$value;
 }
 
+function party_server_config_values(): ?array
+{
+    $path = dirname(__DIR__, 2) . '/_server-config/server-config.php';
+    if (!is_file($path)) {
+        return null;
+    }
+
+    $values = require $path;
+    if (!is_array($values)) {
+        throw new RuntimeException('Invalid private server configuration.');
+    }
+
+    return $values;
+}
+
 function party_connect(array $config): PDO
 {
     $port = max(1, min(65535, (int)($config['db_port'] ?? 3306)));
@@ -69,19 +84,24 @@ function party_connect(array $config): PDO
 function party_get_pdo(): array
 {
     $fileValues = party_parse_env_file(dirname(__DIR__, 2) . '/.env');
+    try {
+        $serverValues = party_server_config_values();
+    } catch (Throwable $error) {
+        return ['pdo' => null, 'error' => 'Nie udało się odczytać prywatnej konfiguracji serwera.'];
+    }
     $localConfig = __DIR__ . '/config.php';
     if (is_file($localConfig)) {
         try {
             $config = require $localConfig;
             if (is_array($config) && ($config['use_shared_db'] ?? false) === true) {
-                $sharedConfig = party_shared_db_config($fileValues, (string)($config['shared_db_name'] ?? ''));
+                $sharedConfig = party_shared_db_config($fileValues, (string)($config['shared_db_name'] ?? ''), $serverValues);
                 if ($sharedConfig === null) {
                     return ['pdo' => null, 'error' => 'Konfiguracja wspólnej bazy Trybu Party jest niezgodna.'];
                 }
                 return ['pdo' => party_connect($sharedConfig), 'error' => null];
             }
             if (is_array($config) && !empty($config['db_host']) && !empty($config['db_name']) && !empty($config['db_user'])) {
-                if (party_uses_shared_db($config, $fileValues)) {
+                if (party_uses_shared_db($config, $fileValues, $serverValues)) {
                     return ['pdo' => null, 'error' => 'Baza Trybu Party musi być inna niż wspólna baza aplikacji.'];
                 }
                 return ['pdo' => party_connect($config), 'error' => null];
@@ -95,7 +115,7 @@ function party_get_pdo(): array
     if ($config === null) {
         return ['pdo' => null, 'error' => 'Brakuje osobnej konfiguracji bazy dla Trybu Party.'];
     }
-    if (party_uses_shared_db($config, $fileValues)) {
+    if (party_uses_shared_db($config, $fileValues, $serverValues)) {
         return ['pdo' => null, 'error' => 'Baza Trybu Party musi być inna niż wspólna baza aplikacji.'];
     }
 
@@ -128,19 +148,33 @@ function party_dedicated_db_config(array $fileValues): ?array
     ];
 }
 
-function party_uses_shared_db(array $config, array $fileValues): bool
+function party_uses_shared_db(array $config, array $fileValues, ?array $serverValues = null): bool
 {
-    $sharedName = party_env_value('DB_NAME', $fileValues);
     $partyName = trim((string)($config['db_name'] ?? ''));
-    return $sharedName !== null && $partyName !== ''
-        && strcasecmp($partyName, trim($sharedName)) === 0;
+    if ($partyName === '') {
+        return false;
+    }
+    foreach ([party_env_value('DB_NAME', $fileValues), $serverValues['DB_NAME'] ?? null] as $sharedName) {
+        if ($sharedName !== null && strcasecmp($partyName, trim((string)$sharedName)) === 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
-function party_shared_db_config(array $fileValues, string $expectedName): ?array
+function party_shared_db_config(array $fileValues, string $expectedName, ?array $serverValues = null): ?array
 {
-    $name = party_env_value('DB_NAME', $fileValues);
-    $host = party_env_value('DB_HOST', $fileValues);
-    $user = party_env_value('DB_USER', $fileValues);
+    $value = static function (string $key, ?string $default = null) use ($fileValues, $serverValues): ?string {
+        if ($serverValues === null) {
+            return party_env_value($key, $fileValues, $default);
+        }
+        $raw = $serverValues[$key] ?? null;
+        return $raw === null || $raw === '' ? $default : (string)$raw;
+    };
+
+    $name = $value('DB_NAME');
+    $host = $value('DB_HOST');
+    $user = $value('DB_USER');
     if ($name === null || $host === null || $user === null
         || $expectedName === '' || strcasecmp(trim($name), trim($expectedName)) !== 0) {
         return null;
@@ -148,10 +182,10 @@ function party_shared_db_config(array $fileValues, string $expectedName): ?array
 
     return [
         'db_host' => $host,
-        'db_port' => (int)party_env_value('DB_PORT', $fileValues, '3306'),
+        'db_port' => (int)$value('DB_PORT', '3306'),
         'db_name' => $name,
         'db_user' => $user,
-        'db_pass' => party_env_value('DB_PASS', $fileValues, ''),
+        'db_pass' => $value('DB_PASS', ''),
     ];
 }
 

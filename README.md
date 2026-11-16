@@ -29,7 +29,7 @@ Następnie otwórz `http://localhost:8000/gierkoteka/`.
 
 Makao wymaga PHP, MySQL oraz lokalnego pliku konfiguracyjnego utworzonego na podstawie `makao/config.example.php`. Schemat bazy znajduje się w `makao/setup.sql`.
 
-Tryb Party wymaga PHP i bazy MySQL. Preferuje osobną bazę wskazaną przez `PARTY_DB_*` (opcjonalnie `PARTY_DB_PORT`) albo niewersjonowany `gierkoteka/party/config.php`. Jeśli hosting dopuszcza tylko jedną bazę, można po wykonaniu kopii użyć wariantu z `config.shared.example.php`: plik `config.php` musi jawnie wskazywać nazwę bazy z kopii. Moduł tworzy wyłącznie własne tabele `gk_party_*`; istniejących `party_*` nie używa. Bez jawnej konfiguracji wspólna baza jest zablokowana. Pierwsze wywołanie API tworzy nowe tabele. Plan kolejnych etapów znajduje się w [`docs/PARTY_MODE_ROADMAP.md`](docs/PARTY_MODE_ROADMAP.md).
+Tryb Party wymaga PHP i bazy MySQL. Preferuje osobną bazę wskazaną przez `PARTY_DB_*` (opcjonalnie `PARTY_DB_PORT`) albo niewersjonowany `gierkoteka/party/config.php`. Jeśli hosting dopuszcza tylko jedną bazę, można po wykonaniu kopii użyć wariantu z `config.shared.example.php`: plik `config.php` musi jawnie wskazywać nazwę bazy z kopii. W tym trybie dane połączenia są pobierane najpierw z prywatnego `_server-config/server-config.php` używanego przez portal; dopiero gdy tego pliku nie ma, z `DB_*`. Moduł tworzy wyłącznie własne tabele `gk_party_*`; istniejących `party_*` ani starszego katalogu `runtime/party-games` nie używa. Bez jawnej konfiguracji wspólna baza jest zablokowana. Pierwsze wywołanie API tworzy nowe tabele. Plan kolejnych etapów znajduje się w [`docs/PARTY_MODE_ROADMAP.md`](docs/PARTY_MODE_ROADMAP.md).
 
 ## Technologie
 
