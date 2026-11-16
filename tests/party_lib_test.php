@@ -54,6 +54,18 @@ check(party_dedicated_db_config([
 ]) === null, 'wspólne DB_* nie powinny uruchamiać Trybu Party');
 check(party_uses_shared_db(['db_name' => 'shared-database'], ['DB_NAME' => 'shared-database']), 'ta sama baza powinna być zablokowana');
 check(!party_uses_shared_db(['db_name' => 'party-staging'], ['DB_NAME' => 'shared-database']), 'inna baza może być użyta');
+check(party_shared_db_config([
+    'DB_HOST' => 'localhost',
+    'DB_NAME' => 'shared-database',
+    'DB_USER' => 'shared-user',
+], '') === null, 'wspólna baza wymaga jawnej nazwy z kopii');
+
+$runtimeFiles = ['bootstrap.php', 'api-v2.php', 'tournament.php', 'setup.sql'];
+$legacyTablePattern = '/\bparty_(?:rooms|players|rounds|round_scores|quiz_answers|higher_lower_answers)\b/';
+foreach ($runtimeFiles as $runtimeFile) {
+    $contents = file_get_contents(dirname(__DIR__) . '/gierkoteka/party/' . $runtimeFile);
+    check($contents !== false && !preg_match($legacyTablePattern, $contents), 'brak kolizji starych tabel w ' . $runtimeFile);
+}
 
 $ranked = party_rank_leaderboard([
     ['id' => 1, 'score_total' => 1200, 'seat' => 0],

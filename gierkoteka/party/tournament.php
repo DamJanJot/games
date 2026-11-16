@@ -111,7 +111,7 @@ function party_create_round(PDO $pdo, int $roomId, int $roundNumber, string $gam
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
     );
     $insert = $pdo->prepare(
-        "INSERT INTO party_rounds
+        "INSERT INTO gk_party_rounds
             (room_id, round_number, game_key, status, current_step, config_json, state_json)
          VALUES (?, ?, ?, 'preparation', 0, ?, '{}')"
     );
@@ -124,7 +124,7 @@ function party_activate_round(PDO $pdo, array $round, int $roomId): void
     $config = party_json_object((string)$round['config_json']);
     $limitMicroseconds = party_game_limit_ms($config) * 1000;
     $update = $pdo->prepare(
-        "UPDATE party_rounds
+        "UPDATE gk_party_rounds
          SET status = 'active', current_step = 0, started_at = NOW(3),
              ends_at = TIMESTAMPADD(MICROSECOND, ?, NOW(3)), finished_at = NULL
          WHERE id = ? AND status = 'preparation'"
@@ -134,7 +134,7 @@ function party_activate_round(PDO $pdo, array $round, int $roomId): void
         party_fail('Ta runda nie czeka już na rozpoczęcie.', 409, 'round_not_preparing');
     }
     $pdo->prepare(
-        "UPDATE party_rooms SET status = 'active', state_version = state_version + 1 WHERE id = ?"
+        "UPDATE gk_party_rooms SET status = 'active', state_version = state_version + 1 WHERE id = ?"
     )->execute([$roomId]);
 }
 
@@ -143,7 +143,7 @@ function party_activate_next_step(PDO $pdo, array $round, int $nextStep, int $ro
     $config = party_json_object((string)$round['config_json']);
     $limitMicroseconds = party_game_limit_ms($config) * 1000;
     $update = $pdo->prepare(
-        "UPDATE party_rounds
+        "UPDATE gk_party_rounds
          SET status = 'active', current_step = ?, started_at = NOW(3),
              ends_at = TIMESTAMPADD(MICROSECOND, ?, NOW(3))
          WHERE id = ? AND status = 'result'"
@@ -157,9 +157,9 @@ function party_activate_next_step(PDO $pdo, array $round, int $nextStep, int $ro
 
 function party_apply_round_scores(PDO $pdo, int $roundId, array $scores): void
 {
-    $playerScore = $pdo->prepare('UPDATE party_players SET score_total = score_total + ? WHERE id = ?');
+    $playerScore = $pdo->prepare('UPDATE gk_party_players SET score_total = score_total + ? WHERE id = ?');
     $roundScore = $pdo->prepare(
-        'INSERT INTO party_round_scores (round_id, player_id, points) VALUES (?, ?, ?)
+        'INSERT INTO gk_party_round_scores (round_id, player_id, points) VALUES (?, ?, ?)
          ON DUPLICATE KEY UPDATE points = points + VALUES(points)'
     );
 
@@ -177,7 +177,7 @@ function party_apply_round_scores(PDO $pdo, int $roundId, array $scores): void
 function party_finish_round(PDO $pdo, array $round, int $roomId): void
 {
     $finish = $pdo->prepare(
-        "UPDATE party_rounds
+        "UPDATE gk_party_rounds
          SET status = 'finished', ends_at = NULL, finished_at = NOW(3)
          WHERE id = ? AND status = 'result'"
     );
@@ -186,7 +186,7 @@ function party_finish_round(PDO $pdo, array $round, int $roomId): void
         party_fail('Ta runda została już zakończona.', 409, 'round_already_finished');
     }
     $pdo->prepare(
-        "UPDATE party_rooms SET status = 'round_result', state_version = state_version + 1 WHERE id = ?"
+        "UPDATE gk_party_rooms SET status = 'round_result', state_version = state_version + 1 WHERE id = ?"
     )->execute([$roomId]);
 }
 
@@ -195,8 +195,8 @@ function party_round_scoreboard(PDO $pdo, int $roomId, int $roundId): array
     $query = $pdo->prepare(
         "SELECT p.id, p.nickname, p.color, p.seat, p.score_total,
                 COALESCE(s.points, 0) AS round_score
-         FROM party_players p
-         LEFT JOIN party_round_scores s ON s.player_id = p.id AND s.round_id = ?
+         FROM gk_party_players p
+         LEFT JOIN gk_party_round_scores s ON s.player_id = p.id AND s.round_id = ?
          WHERE p.room_id = ? AND p.status = 'connected'
          ORDER BY round_score DESC, p.seat ASC"
     );
@@ -217,7 +217,7 @@ function party_tournament_payload(PDO $pdo, array $room, array $leaderboard): ar
     $order = party_tournament_order_from_room($room);
     $round = party_current_round($pdo, (int)$room['id']);
     $roundsQuery = $pdo->prepare(
-        'SELECT round_number, game_key, status FROM party_rounds WHERE room_id = ? ORDER BY round_number ASC'
+        'SELECT round_number, game_key, status FROM gk_party_rounds WHERE room_id = ? ORDER BY round_number ASC'
     );
     $roundsQuery->execute([(int)$room['id']]);
     $rounds = array_map(static function (array $row): array {

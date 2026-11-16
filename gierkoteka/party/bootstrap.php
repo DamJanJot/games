@@ -73,6 +73,13 @@ function party_get_pdo(): array
     if (is_file($localConfig)) {
         try {
             $config = require $localConfig;
+            if (is_array($config) && ($config['use_shared_db'] ?? false) === true) {
+                $sharedConfig = party_shared_db_config($fileValues, (string)($config['shared_db_name'] ?? ''));
+                if ($sharedConfig === null) {
+                    return ['pdo' => null, 'error' => 'Konfiguracja wspólnej bazy Trybu Party jest niezgodna.'];
+                }
+                return ['pdo' => party_connect($sharedConfig), 'error' => null];
+            }
             if (is_array($config) && !empty($config['db_host']) && !empty($config['db_name']) && !empty($config['db_user'])) {
                 if (party_uses_shared_db($config, $fileValues)) {
                     return ['pdo' => null, 'error' => 'Baza Trybu Party musi być inna niż wspólna baza aplikacji.'];
@@ -101,8 +108,7 @@ function party_get_pdo(): array
 
 function party_dedicated_db_config(array $fileValues): ?array
 {
-    // A shared DB_* configuration may belong to other applications (or production).
-    // Party must be pointed at its own database explicitly before it creates tables.
+    // Dedicated settings never fall back to DB_*; shared mode requires an explicit config.php.
     $host = party_env_value('PARTY_DB_HOST', $fileValues);
     $port = party_env_value('PARTY_DB_PORT', $fileValues, '3306');
     $name = party_env_value('PARTY_DB_NAME', $fileValues);
@@ -130,10 +136,29 @@ function party_uses_shared_db(array $config, array $fileValues): bool
         && strcasecmp($partyName, trim($sharedName)) === 0;
 }
 
+function party_shared_db_config(array $fileValues, string $expectedName): ?array
+{
+    $name = party_env_value('DB_NAME', $fileValues);
+    $host = party_env_value('DB_HOST', $fileValues);
+    $user = party_env_value('DB_USER', $fileValues);
+    if ($name === null || $host === null || $user === null
+        || $expectedName === '' || strcasecmp(trim($name), trim($expectedName)) !== 0) {
+        return null;
+    }
+
+    return [
+        'db_host' => $host,
+        'db_port' => (int)party_env_value('DB_PORT', $fileValues, '3306'),
+        'db_name' => $name,
+        'db_user' => $user,
+        'db_pass' => party_env_value('DB_PASS', $fileValues, ''),
+    ];
+}
+
 function party_ensure_schema(PDO $pdo): void
 {
     $pdo->exec(<<<'SQL'
-CREATE TABLE IF NOT EXISTS party_rooms (
+CREATE TABLE IF NOT EXISTS gk_party_rooms (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     room_code CHAR(6) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE,
     status VARCHAR(20) NOT NULL DEFAULT 'lobby',
@@ -147,13 +172,13 @@ CREATE TABLE IF NOT EXISTS party_rooms (
     expires_at DATETIME NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_party_rooms_expires (expires_at),
-    INDEX idx_party_rooms_status (status)
+    INDEX idx_gk_party_rooms_expires (expires_at),
+    INDEX idx_gk_party_rooms_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci
 SQL);
 
     $pdo->exec(<<<'SQL'
-CREATE TABLE IF NOT EXISTS party_players (
+CREATE TABLE IF NOT EXISTS gk_party_players (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     room_id BIGINT UNSIGNED NOT NULL,
     token_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE,
@@ -163,28 +188,19 @@ CREATE TABLE IF NOT EXISTS party_players (
     seat SMALLINT UNSIGNED NOT NULL,
     score_total INT NOT NULL DEFAULT 0,
     status VARCHAR(20) NOT NULL DEFAULT 'connected',
+    is_ready TINYINT(1) NOT NULL DEFAULT 0,
     last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_party_players_room FOREIGN KEY (room_id) REFERENCES party_rooms(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gk_party_players_room FOREIGN KEY (room_id) REFERENCES gk_party_rooms(id) ON DELETE CASCADE,
     UNIQUE KEY uniq_party_player_seat (room_id, seat),
-    INDEX idx_party_players_room_status (room_id, status),
-    INDEX idx_party_players_last_seen (last_seen_at)
+    INDEX idx_gk_party_players_room_status (room_id, status),
+    INDEX idx_gk_party_players_last_seen (last_seen_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci
 SQL);
 
-    $columnQuery = $pdo->prepare(
-        "SELECT COUNT(*)
-         FROM INFORMATION_SCHEMA.COLUMNS
-         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'party_players' AND COLUMN_NAME = 'is_ready'"
-    );
-    $columnQuery->execute();
-    if ((int)$columnQuery->fetchColumn() === 0) {
-        $pdo->exec("ALTER TABLE party_players ADD COLUMN is_ready TINYINT(1) NOT NULL DEFAULT 0 AFTER status");
-    }
-
     $pdo->exec(<<<'SQL'
-CREATE TABLE IF NOT EXISTS party_rounds (
+CREATE TABLE IF NOT EXISTS gk_party_rounds (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     room_id BIGINT UNSIGNED NOT NULL,
     round_number INT UNSIGNED NOT NULL,
@@ -198,28 +214,28 @@ CREATE TABLE IF NOT EXISTS party_rounds (
     finished_at DATETIME(3) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_party_rounds_room FOREIGN KEY (room_id) REFERENCES party_rooms(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gk_party_rounds_room FOREIGN KEY (room_id) REFERENCES gk_party_rooms(id) ON DELETE CASCADE,
     UNIQUE KEY uniq_party_room_round (room_id, round_number),
-    INDEX idx_party_rounds_room_status (room_id, status)
+    INDEX idx_gk_party_rounds_room_status (room_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci
 SQL);
 
     $pdo->exec(<<<'SQL'
-CREATE TABLE IF NOT EXISTS party_round_scores (
+CREATE TABLE IF NOT EXISTS gk_party_round_scores (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     round_id BIGINT UNSIGNED NOT NULL,
     player_id BIGINT UNSIGNED NOT NULL,
     points INT NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_party_round_scores_round FOREIGN KEY (round_id) REFERENCES party_rounds(id) ON DELETE CASCADE,
-    CONSTRAINT fk_party_round_scores_player FOREIGN KEY (player_id) REFERENCES party_players(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gk_party_round_scores_round FOREIGN KEY (round_id) REFERENCES gk_party_rounds(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gk_party_round_scores_player FOREIGN KEY (player_id) REFERENCES gk_party_players(id) ON DELETE CASCADE,
     UNIQUE KEY uniq_party_round_player_score (round_id, player_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci
 SQL);
 
     $pdo->exec(<<<'SQL'
-CREATE TABLE IF NOT EXISTS party_quiz_answers (
+CREATE TABLE IF NOT EXISTS gk_party_quiz_answers (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     round_id BIGINT UNSIGNED NOT NULL,
     player_id BIGINT UNSIGNED NOT NULL,
@@ -230,15 +246,15 @@ CREATE TABLE IF NOT EXISTS party_quiz_answers (
     points_applied TINYINT(1) NOT NULL DEFAULT 0,
     response_ms INT UNSIGNED NOT NULL DEFAULT 0,
     answered_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    CONSTRAINT fk_party_quiz_answers_round FOREIGN KEY (round_id) REFERENCES party_rounds(id) ON DELETE CASCADE,
-    CONSTRAINT fk_party_quiz_answers_player FOREIGN KEY (player_id) REFERENCES party_players(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gk_party_quiz_answers_round FOREIGN KEY (round_id) REFERENCES gk_party_rounds(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gk_party_quiz_answers_player FOREIGN KEY (player_id) REFERENCES gk_party_players(id) ON DELETE CASCADE,
     UNIQUE KEY uniq_party_quiz_answer (round_id, player_id, question_index),
     INDEX idx_party_quiz_question (round_id, question_index)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci
 SQL);
 
     $pdo->exec(<<<'SQL'
-CREATE TABLE IF NOT EXISTS party_higher_lower_answers (
+CREATE TABLE IF NOT EXISTS gk_party_higher_lower_answers (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     round_id BIGINT UNSIGNED NOT NULL,
     player_id BIGINT UNSIGNED NOT NULL,
@@ -249,8 +265,8 @@ CREATE TABLE IF NOT EXISTS party_higher_lower_answers (
     points_applied TINYINT(1) NOT NULL DEFAULT 0,
     response_ms INT UNSIGNED NOT NULL DEFAULT 0,
     answered_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    CONSTRAINT fk_party_higher_lower_answers_round FOREIGN KEY (round_id) REFERENCES party_rounds(id) ON DELETE CASCADE,
-    CONSTRAINT fk_party_higher_lower_answers_player FOREIGN KEY (player_id) REFERENCES party_players(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gk_party_higher_lower_answers_round FOREIGN KEY (round_id) REFERENCES gk_party_rounds(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gk_party_higher_lower_answers_player FOREIGN KEY (player_id) REFERENCES gk_party_players(id) ON DELETE CASCADE,
     UNIQUE KEY uniq_party_higher_lower_answer (round_id, player_id, card_index),
     INDEX idx_party_higher_lower_card (round_id, card_index)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci

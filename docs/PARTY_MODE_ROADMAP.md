@@ -12,7 +12,7 @@ Pierwsza wersja obsłuży dwa sposoby prowadzenia rozgrywki:
 ## Decyzje techniczne
 
 - Backend: PHP 8.1+ i MySQL, zgodnie z obecnym hostingiem.
-- Baza Trybu Party jest wskazywana jawnie przez `PARTY_DB_*` lub lokalny `party/config.php`. Wspólne `DB_*` innych aplikacji nie są używane. Przed pierwszym wywołaniem API trzeba potwierdzić, że wskazana baza jest testowa i odizolowana; API tworzy w niej tabele `party_*`.
+- Baza Trybu Party jest wskazywana jawnie przez `PARTY_DB_*` lub lokalny `party/config.php`. Przy limicie jednej bazy wariant `config.shared.example.php` wymaga kopii i podania jej nazwy; bez tego wspólne `DB_*` pozostają zablokowane. Moduł tworzy tabele `gk_party_*`, których nazwy nie kolidują ze starszymi `party_*`. Przed pierwszym wywołaniem API trzeba sprawdzić kopię i docelową nazwę bazy.
 - Synchronizacja: lekkie odpytywanie API co około 2 sekundy. WebSockety nie są wymagane na pierwszą wersję.
 - Pokój: sześci znakowy kod bez mylących znaków, np. `7KPM2R`.
 - Tożsamość: losowy token gracza. W bazie przechowywany jest wyłącznie jego skrót SHA-256.
@@ -86,10 +86,10 @@ Każda gra dostanie adapter zwracający punkty w tym samym formacie:
 
 ## Model danych
 
-- `party_rooms` — kod, tryb, status, gospodarz, aktualna gra, numer rundy i wersja stanu.
-- `party_players` — pokój, pseudonim, rola, kolor, miejsce, punkty i ostatnia aktywność.
-- `party_rounds` — gra, numer rundy, stan i dane modułu gry (etap 2/3).
-- `party_round_scores` — punkty gracza w konkretnej rundzie (etap 2/3).
+- `gk_party_rooms` — kod, tryb, status, gospodarz, aktualna gra, numer rundy i wersja stanu.
+- `gk_party_players` — pokój, pseudonim, rola, kolor, miejsce, punkty i ostatnia aktywność.
+- `gk_party_rounds` — gra, numer rundy, stan i dane modułu gry (etap 2/3).
+- `gk_party_round_scores` — punkty gracza w konkretnej rundzie (etap 2/3).
 
 ## Kryterium pierwszej wersji testowej
 
