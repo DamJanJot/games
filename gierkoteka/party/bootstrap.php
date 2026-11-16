@@ -68,11 +68,15 @@ function party_connect(array $config): PDO
 
 function party_get_pdo(): array
 {
+    $fileValues = party_parse_env_file(dirname(__DIR__, 2) . '/.env');
     $localConfig = __DIR__ . '/config.php';
     if (is_file($localConfig)) {
         try {
             $config = require $localConfig;
             if (is_array($config) && !empty($config['db_host']) && !empty($config['db_name']) && !empty($config['db_user'])) {
+                if (party_uses_shared_db($config, $fileValues)) {
+                    return ['pdo' => null, 'error' => 'Baza Trybu Party musi być inna niż wspólna baza aplikacji.'];
+                }
                 return ['pdo' => party_connect($config), 'error' => null];
             }
         } catch (Throwable $error) {
@@ -80,10 +84,12 @@ function party_get_pdo(): array
         }
     }
 
-    $fileValues = party_parse_env_file(dirname(__DIR__, 2) . '/.env');
     $config = party_dedicated_db_config($fileValues);
     if ($config === null) {
         return ['pdo' => null, 'error' => 'Brakuje osobnej konfiguracji bazy dla Trybu Party.'];
+    }
+    if (party_uses_shared_db($config, $fileValues)) {
+        return ['pdo' => null, 'error' => 'Baza Trybu Party musi być inna niż wspólna baza aplikacji.'];
     }
 
     try {
@@ -114,6 +120,14 @@ function party_dedicated_db_config(array $fileValues): ?array
         'db_user' => $user,
         'db_pass' => $pass,
     ];
+}
+
+function party_uses_shared_db(array $config, array $fileValues): bool
+{
+    $sharedName = party_env_value('DB_NAME', $fileValues);
+    $partyName = trim((string)($config['db_name'] ?? ''));
+    return $sharedName !== null && $partyName !== ''
+        && strcasecmp($partyName, trim($sharedName)) === 0;
 }
 
 function party_ensure_schema(PDO $pdo): void
