@@ -17,6 +17,7 @@
   const startRequirements = document.querySelector('[data-start-requirements]');
   const installButton = document.querySelector('[data-install]');
   const message = document.querySelector('[data-message]');
+  const connectionStatus = document.querySelector('[data-connection-status]');
   const quizProgress = document.querySelector('[data-quiz-progress]');
   const quizTimer = document.querySelector('[data-quiz-timer]');
   const quizAnswersCount = document.querySelector('[data-quiz-answers-count]');
@@ -38,6 +39,16 @@
   let polling = false;
   let installPrompt = null;
   let localDeadline = 0;
+  let pollFailures = 0;
+
+  class PartyRequestError extends Error {
+    constructor(text, status = 0, code = 'request_failed') {
+      super(text);
+      this.name = 'PartyRequestError';
+      this.status = status;
+      this.code = code;
+    }
+  }
 
   function sessionKey(code) {
     return `gierkoteka.party.${code}`;
@@ -46,6 +57,18 @@
   function setMessage(text, error = false) {
     message.textContent = text;
     message.classList.toggle('is-error', error);
+  }
+
+  function setConnectionState(state) {
+    if (!connectionStatus) return;
+    const labels = {
+      connected: 'Połączono',
+      reconnecting: 'Łączenie ponownie…',
+      offline: 'Brak sieci',
+    };
+    connectionStatus.classList.toggle('is-reconnecting', state === 'reconnecting');
+    connectionStatus.classList.toggle('is-offline', state === 'offline');
+    connectionStatus.querySelector('strong').textContent = labels[state] || labels.connected;
   }
 
   function setButtonBusy(button, busy, busyLabel = 'Chwila…') {
@@ -67,18 +90,39 @@
     const headers = { Accept: 'application/json' };
     if (options.token) headers['X-Party-Token'] = options.token;
     if (options.body) headers['Content-Type'] = 'application/json';
-    const response = await fetch(`${apiUrl}?action=${encodeURIComponent(action)}${options.query || ''}`, {
-      method: options.method || 'GET',
-      headers,
-      body: options.body ? JSON.stringify(options.body) : undefined,
-      cache: 'no-store',
-    });
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8000);
+    let response;
+    try {
+      response = await fetch(`${apiUrl}?action=${encodeURIComponent(action)}${options.query || ''}`, {
+        method: options.method || 'GET',
+        headers,
+        body: options.body ? JSON.stringify(options.body) : undefined,
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+    } catch (error) {
+      const offline = !navigator.onLine;
+      setConnectionState(offline ? 'offline' : 'reconnecting');
+      throw new PartyRequestError(
+        offline ? 'Brak połączenia z internetem. Pokój zostanie przywrócony po powrocie sieci.' : 'Serwer nie odpowiada. Ponawiam połączenie…',
+        0,
+        offline ? 'offline' : error.name === 'AbortError' ? 'timeout' : 'network_error',
+      );
+    } finally {
+      window.clearTimeout(timeout);
+    }
     const payload = await response.json().catch(() => ({
       ok: false,
       error: { message: 'Serwer zwrócił nieprawidłową odpowiedź.' },
     }));
+    setConnectionState('connected');
     if (!response.ok || !payload.ok) {
-      throw new Error(payload.error?.message || 'Nie udało się połączyć z pokojem.');
+      throw new PartyRequestError(
+        payload.error?.message || 'Nie udało się połączyć z pokojem.',
+        response.status,
+        payload.error?.code || 'request_failed',
+      );
     }
     return payload;
   }
@@ -100,6 +144,8 @@
     window.history.replaceState({}, '', url);
     landingView.hidden = true;
     roomView.hidden = false;
+    pollFailures = 0;
+    setConnectionState('connected');
     renderState(state);
     schedulePoll(900);
   }
@@ -153,25 +199,34 @@
       strong.textContent = `${player.nickname}${player.id === you.id ? ' (Ty)' : ''}`;
       const detail = document.createElement('small');
       const role = player.role === 'host' ? 'Gospodarz' : 'Gracz';
-      detail.textContent = `${role} · ${player.is_ready ? 'gotowy' : 'czeka'}`;
+      detail.textContent = `${role} · ${player.is_ready ? 'gotowy' : 'czeka'} · ${player.is_online ? 'online' : 'offline'}`;
       name.append(strong, detail);
-      const status = document.createElement('span');
-      status.className = `ready-dot${player.is_ready ? ' is-ready' : ''}`;
-      status.title = player.is_ready ? 'Gotowy' : 'Jeszcze niegotowy';
-      item.append(avatar, name, status);
+      const presence = document.createElement('span');
+      presence.className = 'player-presence';
+      const onlineStatus = document.createElement('span');
+      onlineStatus.className = `online-dot${player.is_online ? ' is-online' : ''}`;
+      onlineStatus.title = player.is_online ? 'Połączony' : 'Brak połączenia';
+      const readyStatus = document.createElement('span');
+      readyStatus.className = `ready-dot${player.is_ready ? ' is-ready' : ''}`;
+      readyStatus.title = player.is_ready ? 'Gotowy' : 'Jeszcze niegotowy';
+      presence.append(onlineStatus, readyStatus);
+      item.append(avatar, name, presence);
       return item;
     }));
 
     readyButton.textContent = you.is_ready ? 'Wycofaj gotowość' : 'Jestem gotowy';
     readyButton.classList.toggle('is-ready', you.is_ready);
     const readyCount = players.filter((player) => player.is_ready).length;
-    const canStart = players.length >= 2 && readyCount === players.length;
+    const onlineCount = players.filter((player) => player.is_online).length;
+    const canStart = players.length >= 2 && readyCount === players.length && onlineCount === players.length;
     startButton.hidden = !you.is_host;
     startButton.disabled = !canStart;
     startRequirements.textContent = you.is_host
       ? (players.length < 2
         ? 'Dołącz jeszcze co najmniej jeden gracz.'
-        : canStart ? 'Wszyscy są gotowi — można zaczynać.' : `Gotowi: ${readyCount}/${players.length}.`)
+        : onlineCount !== players.length
+          ? `Online: ${onlineCount}/${players.length}. Poczekaj na powrót pozostałych.`
+          : canStart ? 'Wszyscy są gotowi — można zaczynać.' : `Gotowi: ${readyCount}/${players.length}.`)
       : 'Gospodarz uruchomi Quiz, gdy wszyscy będą gotowi.';
   }
 
@@ -268,11 +323,15 @@
         query: `&room=${encodeURIComponent(currentRoomCode)}`,
       });
       renderState(payload.state);
+      pollFailures = 0;
     } catch (error) {
+      pollFailures += 1;
       setMessage(error.message, true);
     } finally {
       polling = false;
-      schedulePoll(1200);
+      const normalDelay = document.hidden ? 5000 : 1200;
+      const retryDelay = Math.min(10000, normalDelay * (2 ** Math.min(pollFailures, 3)));
+      schedulePoll(retryDelay);
     }
   }
 
@@ -418,6 +477,28 @@
     installButton.hidden = false;
   });
 
+  window.addEventListener('offline', () => {
+    setConnectionState('offline');
+    setMessage('Brak sieci. Zachowujemy ten pokój i połączymy się ponownie automatycznie.', true);
+  });
+
+  window.addEventListener('online', () => {
+    setConnectionState('reconnecting');
+    pollFailures = 0;
+    if (currentRoomCode) {
+      schedulePoll(0);
+    } else {
+      restoreSession();
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && currentRoomCode) {
+      pollFailures = 0;
+      schedulePoll(0);
+    }
+  });
+
   installButton.addEventListener('click', async () => {
     if (!installPrompt) return;
     installPrompt.prompt();
@@ -443,8 +524,14 @@
       enterRoom(code, token, payload.state);
       setMessage('Pokój przywrócony.');
     } catch (error) {
-      localStorage.removeItem(sessionKey(code));
-      setMessage(`${error.message} Możesz dołączyć ponownie.`, true);
+      const sessionEnded = error.status === 401 || error.status === 410
+        || ['session_expired', 'room_closed'].includes(error.code);
+      if (sessionEnded) {
+        localStorage.removeItem(sessionKey(code));
+        setMessage(`${error.message} Możesz dołączyć ponownie.`, true);
+      } else {
+        setMessage(`${error.message} Sesja jest zachowana.`, true);
+      }
     }
   }
 

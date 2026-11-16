@@ -78,6 +78,10 @@
                 <strong class="room-code" data-room-code>------</strong>
             </div>
             <div class="room-summary-actions">
+                <span class="connection-status" data-connection-status role="status" aria-live="polite">
+                    <span aria-hidden="true"></span>
+                    <strong>Połączono</strong>
+                </span>
                 <button type="button" class="small-button" data-copy-link>Kopiuj link</button>
                 <button type="button" class="small-button quiet" data-install hidden>Zainstaluj</button>
             </div>

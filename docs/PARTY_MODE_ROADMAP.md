@@ -32,7 +32,7 @@ Pierwsza wersja obsłuży dwa sposoby prowadzenia rozgrywki:
 - ponowne wejście do pokoju z tego samego urządzenia;
 - opuszczenie pokoju i automatyczne przekazanie roli gospodarza.
 
-Stan: kod i test integracyjny są gotowe. Test na izolowanym MariaDB 10.4 objął utworzenie pokoju, dwóch graczy, gotowość, synchronizację oraz przekazanie gospodarza. Weryfikacja na prawdziwych telefonach i produkcyjnej konfiguracji pozostaje osobnym krokiem.
+Stan: kod i test integracyjny są gotowe. Test na izolowanym MariaDB 10.4 objął gospodarza i trzy dodatkowe sesje, wykrycie braku aktywności, blokadę startu z graczem offline, powrót wszystkich sesji tym samym tokenem, gotowość, synchronizację oraz przekazanie gospodarza. Klient zachowuje pokój przy chwilowym braku sieci i ponawia połączenie z rosnącym odstępem. Weryfikacja na prawdziwych telefonach i produkcyjnej konfiguracji pozostaje osobnym krokiem.
 
 ### 2. Quiz — grywalna wersja lokalna
 
@@ -100,4 +100,4 @@ Po uruchomieniu aplikacji z testową bazą można wykonać pełny przepływ pole
 powershell -NoProfile -ExecutionPolicy Bypass -File tests\party_api_integration.ps1
 ```
 
-Skrypt nie korzysta z produkcji. Tworzy dwie sesje, rozgrywa pięć pytań, sprawdza ranking i potwierdza przekazanie roli gospodarza.
+Skrypt nie korzysta z produkcji. Tworzy cztery sesje, czeka na próg offline, sprawdza bezpieczny powrót każdej sesji, rozgrywa pięć pytań, sprawdza ranking i potwierdza przekazanie roli gospodarza. Test trwa około 25 sekund ze względu na kontrolowaną przerwę w aktywności.

@@ -265,7 +265,51 @@
 .room-summary-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+
+.connection-status {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  border: 1px solid rgba(37, 161, 142, 0.22);
+  border-radius: 999px;
+  color: #147d6e;
+  background: rgba(37, 161, 142, 0.1);
+  font-size: 0.78rem;
+}
+
+.connection-status > span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--party-green);
+  box-shadow: 0 0 0 4px rgba(37, 161, 142, 0.12);
+}
+
+.connection-status.is-reconnecting {
+  border-color: rgba(242, 143, 59, 0.28);
+  color: #a85412;
+  background: rgba(242, 143, 59, 0.1);
+}
+
+.connection-status.is-reconnecting > span {
+  background: #f28f3b;
+  box-shadow: 0 0 0 4px rgba(242, 143, 59, 0.12);
+}
+
+.connection-status.is-offline {
+  border-color: rgba(239, 71, 111, 0.25);
+  color: #b4234d;
+  background: rgba(239, 71, 111, 0.1);
+}
+
+.connection-status.is-offline > span {
+  background: var(--party-pink);
+  box-shadow: 0 0 0 4px rgba(239, 71, 111, 0.12);
 }
 
 .small-button {
@@ -391,6 +435,12 @@
   border-color: var(--party-green);
   background: var(--party-green);
   box-shadow: 0 0 0 4px rgba(37, 161, 142, 0.14);
+}
+
+.player-presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .ready-button {

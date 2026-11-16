@@ -202,15 +202,21 @@ function party_start_quiz(PDO $pdo, array $body): never
         if ($session['room_status'] !== 'lobby') {
             party_fail('Ten pokój nie jest już w poczekalni.', 409, 'room_already_started');
         }
+        party_touch_player($pdo, (int)$session['player_id']);
 
         $playersQuery = $pdo->prepare(
-            "SELECT COUNT(*) AS total, SUM(CASE WHEN is_ready = 1 THEN 1 ELSE 0 END) AS ready_count
+            "SELECT COUNT(*) AS total,
+                    SUM(CASE WHEN is_ready = 1 THEN 1 ELSE 0 END) AS ready_count,
+                    SUM(CASE WHEN last_seen_at >= DATE_SUB(NOW(), INTERVAL 20 SECOND) THEN 1 ELSE 0 END) AS online_count
              FROM party_players WHERE room_id = ? AND status = 'connected'"
         );
         $playersQuery->execute([(int)$session['room_id']]);
         $counts = $playersQuery->fetch();
         if ((int)$counts['total'] < 2) {
             party_fail('Do startu potrzebnych jest co najmniej dwóch graczy.', 409, 'not_enough_players');
+        }
+        if ((int)$counts['online_count'] !== (int)$counts['total']) {
+            party_fail('Wszyscy gracze muszą być online, aby rozpocząć Quiz.', 409, 'players_offline');
         }
         if ((int)$counts['ready_count'] !== (int)$counts['total']) {
             party_fail('Wszyscy gracze muszą najpierw oznaczyć gotowość.', 409, 'players_not_ready');

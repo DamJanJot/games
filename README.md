@@ -11,7 +11,7 @@ Zbiór przeglądarkowych gier i eksperymentów logicznych. Repozytorium zawiera 
 ## Zawartość
 
 - `gierkoteka/` — hub gier napisany w HTML, CSS i JavaScript
-- `gierkoteka/party/` — poczekalnia turniejowa z gotowością graczy oraz grywalnym Quizem, zegarem i wspólną punktacją
+- `gierkoteka/party/` — poczekalnia turniejowa z obecnością online, automatycznym odzyskiwaniem sesji oraz grywalnym Quizem, zegarem i wspólną punktacją
 - Sudoku
 - Pasjans
 - gry logiczne Blocks, Lines i Arrows
