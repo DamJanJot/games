@@ -9,6 +9,8 @@ if (realpath((string)($_SERVER['SCRIPT_FILENAME'] ?? '')) === __FILE__) {
 require __DIR__ . '/lib.php';
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/quiz.php';
+require __DIR__ . '/higher-lower.php';
+require __DIR__ . '/tournament.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');
@@ -35,9 +37,13 @@ try {
         'state' => party_dispatch('GET', fn() => party_get_state($pdo)),
         'heartbeat' => party_dispatch('POST', fn() => party_heartbeat($pdo, $body)),
         'ready' => party_dispatch('POST', fn() => party_set_ready($pdo, $body)),
-        'start_quiz' => party_dispatch('POST', fn() => party_start_quiz($pdo, $body)),
-        'answer_quiz' => party_dispatch('POST', fn() => party_answer_quiz($pdo, $body)),
-        'advance_quiz' => party_dispatch('POST', fn() => party_advance_quiz($pdo, $body)),
+        'start_tournament' => party_dispatch('POST', fn() => party_start_tournament($pdo, $body)),
+        'submit_answer' => party_dispatch('POST', fn() => party_submit_answer($pdo, $body)),
+        'advance_tournament' => party_dispatch('POST', fn() => party_advance_tournament($pdo, $body)),
+        'start_quiz' => party_dispatch('POST', fn() => party_start_tournament($pdo, $body, true)),
+        'answer_quiz' => party_dispatch('POST', fn() => party_submit_answer($pdo, $body, 'quiz')),
+        'advance_quiz' => party_dispatch('POST', fn() => party_advance_tournament($pdo, $body)),
+        'answer_higher_lower' => party_dispatch('POST', fn() => party_submit_answer($pdo, $body, 'higher_lower')),
         'leave' => party_dispatch('POST', fn() => party_leave_room($pdo, $body)),
         default => party_fail('Nieznana akcja API.', 404, 'unknown_action'),
     };
@@ -162,7 +168,7 @@ function party_get_state(PDO $pdo): never
     $roomCode = party_normalize_room_code((string)($_GET['room'] ?? ''));
     $session = party_load_session($pdo, $roomCode, party_token_from_request());
     party_touch_player($pdo, (int)$session['player_id']);
-    party_refresh_quiz_round($pdo, (int)$session['room_id']);
+    party_refresh_game_round($pdo, (int)$session['room_id']);
     party_json(['ok' => true, 'state' => party_state_payload($pdo, $session)]);
 }
 
@@ -171,7 +177,7 @@ function party_heartbeat(PDO $pdo, array $body): never
     $roomCode = party_normalize_room_code((string)($body['room_code'] ?? ''));
     $session = party_load_session($pdo, $roomCode, party_token_from_request());
     party_touch_player($pdo, (int)$session['player_id']);
-    party_refresh_quiz_round($pdo, (int)$session['room_id']);
+    party_refresh_game_round($pdo, (int)$session['room_id']);
     party_json(['ok' => true, 'state' => party_state_payload($pdo, $session)]);
 }
 
@@ -191,7 +197,7 @@ function party_set_ready(PDO $pdo, array $body): never
     party_json(['ok' => true, 'state' => party_state_payload($pdo, $session)]);
 }
 
-function party_start_quiz(PDO $pdo, array $body): never
+function party_start_tournament(PDO $pdo, array $body, bool $startImmediately = false): never
 {
     $roomCode = party_normalize_room_code((string)($body['room_code'] ?? ''));
     $token = party_token_from_request();
@@ -216,29 +222,29 @@ function party_start_quiz(PDO $pdo, array $body): never
             party_fail('Do startu potrzebnych jest co najmniej dwóch graczy.', 409, 'not_enough_players');
         }
         if ((int)$counts['online_count'] !== (int)$counts['total']) {
-            party_fail('Wszyscy gracze muszą być online, aby rozpocząć Quiz.', 409, 'players_offline');
+            party_fail('Wszyscy gracze muszą być online, aby rozpocząć turniej.', 409, 'players_offline');
         }
         if ((int)$counts['ready_count'] !== (int)$counts['total']) {
             party_fail('Wszyscy gracze muszą najpierw oznaczyć gotowość.', 409, 'players_not_ready');
         }
 
-        $config = json_encode([
-            'question_ids' => party_quiz_question_order(),
-            'question_limit_ms' => PARTY_QUIZ_LIMIT_MS,
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-        $roundNumber = (int)$session['round_number'] + 1;
-        $insert = $pdo->prepare(
-            "INSERT INTO party_rounds
-                (room_id, round_number, game_key, status, current_step, config_json, state_json, started_at, ends_at)
-             VALUES (?, ?, 'quiz', 'active', 0, ?, '{}', NOW(3), DATE_ADD(NOW(3), INTERVAL 20 SECOND))"
+        $order = party_tournament_game_order();
+        $settings = json_encode(
+            ['round_order' => $order],
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
         );
-        $insert->execute([(int)$session['room_id'], $roundNumber, $config]);
+        $roundNumber = 1;
+        $round = party_create_round($pdo, (int)$session['room_id'], $roundNumber, $order[0]);
         $roomUpdate = $pdo->prepare(
             "UPDATE party_rooms
-             SET status = 'active', current_game_key = 'quiz', round_number = ?, state_version = state_version + 1
+             SET status = 'preparation', current_game_key = ?, round_number = ?, settings_json = ?,
+                 state_version = state_version + 1
              WHERE id = ?"
         );
-        $roomUpdate->execute([$roundNumber, (int)$session['room_id']]);
+        $roomUpdate->execute([$order[0], $roundNumber, $settings, (int)$session['room_id']]);
+        if ($startImmediately) {
+            party_activate_round($pdo, $round, (int)$session['room_id']);
+        }
         $pdo->commit();
     } catch (Throwable $error) {
         party_roll_back($pdo);
@@ -249,24 +255,24 @@ function party_start_quiz(PDO $pdo, array $body): never
     party_json(['ok' => true, 'state' => party_state_payload($pdo, $session)]);
 }
 
-function party_answer_quiz(PDO $pdo, array $body): never
+function party_submit_answer(PDO $pdo, array $body, ?string $expectedGame = null): never
 {
     $roomCode = party_normalize_room_code((string)($body['room_code'] ?? ''));
     $token = party_token_from_request();
-    $answerIndex = filter_var($body['answer_index'] ?? null, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
-    if ($answerIndex === null || $answerIndex < 0 || $answerIndex > 3) {
-        party_fail('Wybierz poprawną odpowiedź.', 422, 'invalid_answer');
-    }
 
     $pdo->beginTransaction();
     try {
         $session = party_load_session($pdo, $roomCode, $token, true);
-        if ($session['room_status'] !== 'active' || $session['current_game_key'] !== 'quiz') {
-            party_fail('Quiz nie jest teraz aktywny.', 409, 'quiz_not_active');
+        $gameKey = (string)$session['current_game_key'];
+        if ($session['room_status'] !== 'active' || !party_game_definition($gameKey)) {
+            party_fail('Żadna gra nie czeka teraz na odpowiedź.', 409, 'game_not_active');
+        }
+        if ($expectedGame !== null && $gameKey !== $expectedGame) {
+            party_fail('Ta odpowiedź nie pasuje do aktywnej gry.', 409, 'wrong_game');
         }
         $round = party_current_round($pdo, (int)$session['room_id'], true);
-        if (!$round || $round['game_key'] !== 'quiz' || $round['status'] !== 'active') {
-            party_fail('To pytanie jest już zamknięte.', 409, 'question_closed');
+        if (!$round || $round['game_key'] !== $gameKey || $round['status'] !== 'active') {
+            party_fail('Ten etap jest już zamknięty.', 409, 'question_closed');
         }
 
         $timingQuery = $pdo->prepare(
@@ -277,42 +283,78 @@ function party_answer_quiz(PDO $pdo, array $body): never
         $timingQuery->execute([(int)$round['id']]);
         $timing = $timingQuery->fetch();
         if (!(bool)$timing['can_answer']) {
-            party_close_quiz_question($pdo, $round, (int)$session['room_id']);
+            party_close_current_step($pdo, $round, (int)$session['room_id']);
             $pdo->commit();
             party_fail('Czas na odpowiedź już minął.', 409, 'question_closed');
         }
 
-        $existingQuery = $pdo->prepare(
-            'SELECT 1 FROM party_quiz_answers WHERE round_id = ? AND player_id = ? AND question_index = ? LIMIT 1'
-        );
-        $existingQuery->execute([(int)$round['id'], (int)$session['player_id'], (int)$round['current_step']]);
-        if ($existingQuery->fetchColumn()) {
-            party_fail('Odpowiedź została już zapisana.', 409, 'answer_already_submitted');
-        }
-
         $config = party_json_object((string)$round['config_json']);
-        $question = party_quiz_question((int)($config['question_ids'][(int)$round['current_step']] ?? 0));
-        if (!$question) {
-            party_fail('Nie udało się odnaleźć pytania.', 500, 'quiz_question_missing');
+        $step = (int)$round['current_step'];
+        $limitMs = party_game_limit_ms($config);
+        $elapsedMs = min((int)$timing['elapsed_ms'], $limitMs);
+        if ($gameKey === 'quiz') {
+            $existingQuery = $pdo->prepare(
+                'SELECT 1 FROM party_quiz_answers WHERE round_id = ? AND player_id = ? AND question_index = ? LIMIT 1'
+            );
+            $existingQuery->execute([(int)$round['id'], (int)$session['player_id'], $step]);
+            if ($existingQuery->fetchColumn()) {
+                party_fail('Odpowiedź została już zapisana.', 409, 'answer_already_submitted');
+            }
+            $answerIndex = filter_var(
+                $body['answer_index'] ?? $body['answer'] ?? null,
+                FILTER_VALIDATE_INT,
+                FILTER_NULL_ON_FAILURE
+            );
+            if ($answerIndex === null || $answerIndex < 0 || $answerIndex > 3) {
+                party_fail('Wybierz poprawną odpowiedź.', 422, 'invalid_answer');
+            }
+            $question = party_quiz_question((int)($config['question_ids'][$step] ?? 0));
+            if (!$question) {
+                party_fail('Nie udało się odnaleźć pytania.', 500, 'quiz_question_missing');
+            }
+            $correct = $answerIndex === (int)$question['correct'];
+            $points = party_quiz_score($correct, $elapsedMs, $limitMs);
+            $insert = $pdo->prepare(
+                "INSERT INTO party_quiz_answers
+                    (round_id, player_id, question_index, answer_index, is_correct, points, response_ms)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)"
+            );
+            $insert->execute([
+                (int)$round['id'], (int)$session['player_id'], $step,
+                $answerIndex, $correct ? 1 : 0, $points, $elapsedMs,
+            ]);
+        } else {
+            $existingQuery = $pdo->prepare(
+                'SELECT 1 FROM party_higher_lower_answers WHERE round_id = ? AND player_id = ? AND card_index = ? LIMIT 1'
+            );
+            $existingQuery->execute([(int)$round['id'], (int)$session['player_id'], $step]);
+            if ($existingQuery->fetchColumn()) {
+                party_fail('Odpowiedź została już zapisana.', 409, 'answer_already_submitted');
+            }
+            $choice = party_higher_lower_choice((string)($body['choice'] ?? $body['answer'] ?? ''));
+            if ($choice === null) {
+                party_fail('Wybierz więcej albo mniej.', 422, 'invalid_answer');
+            }
+            $card = party_higher_lower_card((int)($config['card_ids'][$step] ?? 0));
+            if (!$card) {
+                party_fail('Nie udało się odnaleźć porównania.', 500, 'higher_lower_card_missing');
+            }
+            $correct = $choice === $card['correct'];
+            $points = party_higher_lower_score($correct, $elapsedMs, $limitMs);
+            $insert = $pdo->prepare(
+                "INSERT INTO party_higher_lower_answers
+                    (round_id, player_id, card_index, choice_value, is_correct, points, response_ms)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)"
+            );
+            $insert->execute([
+                (int)$round['id'], (int)$session['player_id'], $step,
+                $choice, $correct ? 1 : 0, $points, $elapsedMs,
+            ]);
         }
 
-        $correct = $answerIndex === (int)$question['correct'];
-        $limitMs = (int)($config['question_limit_ms'] ?? PARTY_QUIZ_LIMIT_MS);
-        $elapsedMs = min((int)$timing['elapsed_ms'], $limitMs);
-        $points = party_quiz_score($correct, $elapsedMs, $limitMs);
-        $insert = $pdo->prepare(
-            "INSERT INTO party_quiz_answers
-                (round_id, player_id, question_index, answer_index, is_correct, points, response_ms)
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
-        );
-        $insert->execute([
-            (int)$round['id'], (int)$session['player_id'], (int)$round['current_step'],
-            $answerIndex, $correct ? 1 : 0, $points, $elapsedMs,
-        ]);
-
-        $answerCount = party_question_answer_count($pdo, (int)$round['id'], (int)$round['current_step']);
+        $answerCount = party_game_answer_count($pdo, $gameKey, (int)$round['id'], $step);
         if ($answerCount >= party_connected_player_count($pdo, (int)$session['room_id'])) {
-            party_close_quiz_question($pdo, $round, (int)$session['room_id']);
+            party_close_current_step($pdo, $round, (int)$session['room_id']);
         } else {
             party_bump_room_version($pdo, (int)$session['room_id']);
         }
@@ -326,7 +368,7 @@ function party_answer_quiz(PDO $pdo, array $body): never
     party_json(['ok' => true, 'state' => party_state_payload($pdo, $session)]);
 }
 
-function party_advance_quiz(PDO $pdo, array $body): never
+function party_advance_tournament(PDO $pdo, array $body): never
 {
     $roomCode = party_normalize_room_code((string)($body['room_code'] ?? ''));
     $token = party_token_from_request();
@@ -334,36 +376,55 @@ function party_advance_quiz(PDO $pdo, array $body): never
     try {
         $session = party_load_session($pdo, $roomCode, $token, true);
         party_require_host($session);
+        $room = party_room($pdo, (int)$session['room_id']);
         $round = party_current_round($pdo, (int)$session['room_id'], true);
-        if (!$round || $round['game_key'] !== 'quiz' || !in_array($round['status'], ['active', 'result'], true)) {
-            party_fail('Nie ma aktywnego etapu Quizu.', 409, 'quiz_not_active');
-        }
+        $roomStatus = (string)$room['status'];
 
-        if ($round['status'] === 'active') {
-            party_close_quiz_question($pdo, $round, (int)$session['room_id']);
-        } else {
-            $config = party_json_object((string)$round['config_json']);
-            $nextStep = (int)$round['current_step'] + 1;
-            $questionCount = count($config['question_ids'] ?? []);
-            if ($nextStep < $questionCount) {
-                $update = $pdo->prepare(
-                    "UPDATE party_rounds
-                     SET status = 'active', current_step = ?, started_at = NOW(3),
-                         ends_at = DATE_ADD(NOW(3), INTERVAL 20 SECOND)
-                     WHERE id = ?"
-                );
-                $update->execute([$nextStep, (int)$round['id']]);
-                party_bump_room_version($pdo, (int)$session['room_id']);
-            } else {
-                $finishRound = $pdo->prepare(
-                    "UPDATE party_rounds SET status = 'finished', ends_at = NULL, finished_at = NOW(3) WHERE id = ?"
-                );
-                $finishRound->execute([(int)$round['id']]);
-                $finishRoom = $pdo->prepare(
-                    "UPDATE party_rooms SET status = 'results', state_version = state_version + 1 WHERE id = ?"
-                );
-                $finishRoom->execute([(int)$session['room_id']]);
+        if ($roomStatus === 'preparation') {
+            if (!$round || $round['status'] !== 'preparation') {
+                party_fail('Runda nie czeka na rozpoczęcie.', 409, 'round_not_preparing');
             }
+            party_activate_round($pdo, $round, (int)$session['room_id']);
+        } elseif ($roomStatus === 'active') {
+            if (!$round || !in_array($round['status'], ['active', 'result'], true)) {
+                party_fail('Nie ma aktywnego etapu gry.', 409, 'game_not_active');
+            }
+            if ($round['status'] === 'active') {
+                party_close_current_step($pdo, $round, (int)$session['room_id']);
+            } else {
+                $config = party_json_object((string)$round['config_json']);
+                $nextStep = (int)$round['current_step'] + 1;
+                if ($nextStep < party_game_step_count((string)$round['game_key'], $config)) {
+                    party_activate_next_step($pdo, $round, $nextStep, (int)$session['room_id']);
+                } else {
+                    party_finish_round($pdo, $round, (int)$session['room_id']);
+                }
+            }
+        } elseif ($roomStatus === 'round_result') {
+            $pdo->prepare(
+                "UPDATE party_rooms SET status = 'leaderboard', state_version = state_version + 1 WHERE id = ?"
+            )->execute([(int)$session['room_id']]);
+        } elseif ($roomStatus === 'leaderboard') {
+            $order = party_tournament_order_from_room($room);
+            $nextRoundNumber = (int)$room['round_number'] + 1;
+            if ($nextRoundNumber <= count($order)) {
+                $nextGameKey = $order[$nextRoundNumber - 1];
+                party_create_round($pdo, (int)$session['room_id'], $nextRoundNumber, $nextGameKey);
+                $pdo->prepare(
+                    "UPDATE party_rooms
+                     SET status = 'preparation', current_game_key = ?, round_number = ?,
+                         state_version = state_version + 1
+                     WHERE id = ?"
+                )->execute([$nextGameKey, $nextRoundNumber, (int)$session['room_id']]);
+            } else {
+                $pdo->prepare(
+                    "UPDATE party_rooms
+                     SET status = 'finished', current_game_key = NULL, state_version = state_version + 1
+                     WHERE id = ?"
+                )->execute([(int)$session['room_id']]);
+            }
+        } else {
+            party_fail('Turniej nie może teraz przejść dalej.', 409, 'invalid_tournament_transition');
         }
         $pdo->commit();
     } catch (Throwable $error) {
@@ -396,7 +457,7 @@ function party_leave_room(PDO $pdo, array $body): never
                 $pdo->prepare('UPDATE party_rooms SET host_player_id = ?, state_version = state_version + 1 WHERE id = ?')
                     ->execute([(int)$nextHostId, (int)$session['room_id']]);
             } else {
-                $pdo->prepare("UPDATE party_rooms SET status = 'finished', state_version = state_version + 1 WHERE id = ?")
+                $pdo->prepare("UPDATE party_rooms SET status = 'closed', state_version = state_version + 1 WHERE id = ?")
                     ->execute([(int)$session['room_id']]);
             }
         } else {
@@ -431,7 +492,7 @@ function party_load_session(PDO $pdo, string $roomCode, string $token, bool $for
     if (!$session || $session['player_status'] === 'left') {
         party_fail('Sesja wygasła. Dołącz ponownie do pokoju.', 401, 'session_expired');
     }
-    if (strtotime((string)$session['expires_at']) <= time() || $session['room_status'] === 'finished') {
+    if (strtotime((string)$session['expires_at']) <= time() || $session['room_status'] === 'closed') {
         party_fail('Ten pokój jest już zamknięty.', 410, 'room_closed');
     }
     return $session;
@@ -457,11 +518,9 @@ function party_state_payload(PDO $pdo, array $session): array
         'is_online' => (bool)$player['is_online'],
     ], $playersQuery->fetchAll());
 
-    $leaderboard = $players;
-    usort($leaderboard, static fn(array $left, array $right): int =>
-        $right['score_total'] <=> $left['score_total'] ?: $left['seat'] <=> $right['seat']
-    );
+    $leaderboard = party_rank_leaderboard($players);
     $serverTimeMs = (int)$pdo->query('SELECT CAST(UNIX_TIMESTAMP(NOW(3)) * 1000 AS UNSIGNED)')->fetchColumn();
+    $game = party_game_payload($pdo, $room, (int)$session['player_id'], count($players));
 
     return [
         'room' => [
@@ -477,9 +536,19 @@ function party_state_payload(PDO $pdo, array $session): array
         ],
         'players' => $players,
         'leaderboard' => $leaderboard,
-        'game' => party_quiz_payload($pdo, $room, (int)$session['player_id'], count($players)),
+        'game' => $game,
+        'tournament' => party_tournament_payload($pdo, $room, $leaderboard),
         'server_time_ms' => $serverTimeMs,
     ];
+}
+
+function party_game_payload(PDO $pdo, array $room, int $playerId, int $playerCount): ?array
+{
+    return match ($room['current_game_key']) {
+        'quiz' => party_quiz_payload($pdo, $room, $playerId, $playerCount),
+        'higher_lower' => party_higher_lower_payload($pdo, $room, $playerId, $playerCount),
+        default => null,
+    };
 }
 
 function party_quiz_payload(PDO $pdo, array $room, int $playerId, int $playerCount): ?array
@@ -534,16 +603,75 @@ function party_quiz_payload(PDO $pdo, array $room, int $playerId, int $playerCou
     return $payload;
 }
 
-function party_refresh_quiz_round(PDO $pdo, int $roomId): void
+function party_higher_lower_payload(PDO $pdo, array $room, int $playerId, int $playerCount): ?array
+{
+    if ($room['current_game_key'] !== 'higher_lower') return null;
+    $round = party_current_round($pdo, (int)$room['id']);
+    if (!$round || $round['game_key'] !== 'higher_lower') return null;
+
+    $config = party_json_object((string)$round['config_json']);
+    $cardIds = is_array($config['card_ids'] ?? null) ? $config['card_ids'] : [];
+    $cardIndex = (int)$round['current_step'];
+    $card = party_higher_lower_card((int)($cardIds[$cardIndex] ?? 0));
+    if (!$card) return null;
+
+    $answerQuery = $pdo->prepare(
+        'SELECT choice_value, points FROM party_higher_lower_answers WHERE round_id = ? AND player_id = ? AND card_index = ?'
+    );
+    $answerQuery->execute([(int)$round['id'], $playerId, $cardIndex]);
+    $yourAnswer = $answerQuery->fetch();
+    $endsAtMs = null;
+    if ($round['ends_at'] !== null) {
+        $endQuery = $pdo->prepare('SELECT CAST(UNIX_TIMESTAMP(ends_at) * 1000 AS UNSIGNED) FROM party_rounds WHERE id = ?');
+        $endQuery->execute([(int)$round['id']]);
+        $endsAtMs = (int)$endQuery->fetchColumn();
+    }
+
+    $payload = [
+        'key' => 'higher_lower', 'round_id' => (int)$round['id'], 'round_status' => $round['status'],
+        'card_index' => $cardIndex, 'card_number' => $cardIndex + 1, 'card_count' => count($cardIds),
+        'category' => $card['category'], 'reference_label' => $card['reference_label'],
+        'reference_value' => $card['reference_value'], 'target_label' => $card['target_label'],
+        'question' => $card['question'],
+        'choices' => [
+            ['key' => 'more', 'label' => 'Więcej'],
+            ['key' => 'less', 'label' => 'Mniej'],
+        ],
+        'answers_received' => party_game_answer_count($pdo, 'higher_lower', (int)$round['id'], $cardIndex),
+        'players_expected' => $playerCount, 'ends_at_ms' => $endsAtMs,
+        'your_choice' => $yourAnswer ? $yourAnswer['choice_value'] : null,
+        'your_points' => $round['status'] !== 'active' && $yourAnswer ? (int)$yourAnswer['points'] : null,
+        'can_answer' => $round['status'] === 'active' && !$yourAnswer,
+    ];
+
+    if (in_array($round['status'], ['result', 'finished'], true)) {
+        $distributionQuery = $pdo->prepare(
+            'SELECT choice_value, COUNT(*) AS total FROM party_higher_lower_answers
+             WHERE round_id = ? AND card_index = ? GROUP BY choice_value'
+        );
+        $distributionQuery->execute([(int)$round['id'], $cardIndex]);
+        $distribution = ['more' => 0, 'less' => 0];
+        foreach ($distributionQuery->fetchAll() as $row) {
+            $distribution[$row['choice_value']] = (int)$row['total'];
+        }
+        $payload['correct_choice'] = $card['correct'];
+        $payload['target_value'] = $card['target_value'];
+        $payload['explanation'] = $card['explanation'];
+        $payload['answer_distribution'] = $distribution;
+    }
+    return $payload;
+}
+
+function party_refresh_game_round(PDO $pdo, int $roomId): void
 {
     if ($pdo->inTransaction()) return;
     $pdo->beginTransaction();
     try {
         $round = party_current_round($pdo, $roomId, true);
-        if ($round && $round['game_key'] === 'quiz' && $round['status'] === 'active') {
+        if ($round && party_game_definition((string)$round['game_key']) && $round['status'] === 'active') {
             $expiredQuery = $pdo->prepare('SELECT NOW(3) >= ends_at FROM party_rounds WHERE id = ?');
             $expiredQuery->execute([(int)$round['id']]);
-            if ((bool)$expiredQuery->fetchColumn()) party_close_quiz_question($pdo, $round, $roomId);
+            if ((bool)$expiredQuery->fetchColumn()) party_close_current_step($pdo, $round, $roomId);
         }
         $pdo->commit();
     } catch (Throwable $error) {
@@ -552,25 +680,47 @@ function party_refresh_quiz_round(PDO $pdo, int $roomId): void
     }
 }
 
+function party_close_current_step(PDO $pdo, array $round, int $roomId): void
+{
+    if ($round['game_key'] === 'quiz') {
+        party_close_quiz_question($pdo, $round, $roomId);
+        return;
+    }
+    if ($round['game_key'] === 'higher_lower') {
+        party_close_higher_lower_card($pdo, $round, $roomId);
+        return;
+    }
+    party_fail('Nieznany moduł gry.', 500, 'unknown_game');
+}
+
 function party_close_quiz_question(PDO $pdo, array $round, int $roomId): void
 {
     if ($round['status'] !== 'active') return;
     $answersQuery = $pdo->prepare(
-        'SELECT id, player_id, points FROM party_quiz_answers WHERE round_id = ? AND question_index = ? AND points_applied = 0 FOR UPDATE'
+        'SELECT player_id, points FROM party_quiz_answers WHERE round_id = ? AND question_index = ? AND points_applied = 0 FOR UPDATE'
     );
     $answersQuery->execute([(int)$round['id'], (int)$round['current_step']]);
-    $playerScore = $pdo->prepare('UPDATE party_players SET score_total = score_total + ? WHERE id = ?');
-    $roundScore = $pdo->prepare(
-        'INSERT INTO party_round_scores (round_id, player_id, points) VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE points = points + VALUES(points)'
-    );
-    foreach ($answersQuery->fetchAll() as $answer) {
-        $points = (int)$answer['points'];
-        $playerScore->execute([$points, (int)$answer['player_id']]);
-        $roundScore->execute([(int)$round['id'], (int)$answer['player_id'], $points]);
-    }
+    party_apply_round_scores($pdo, (int)$round['id'], $answersQuery->fetchAll());
     $pdo->prepare(
         'UPDATE party_quiz_answers SET points_applied = 1 WHERE round_id = ? AND question_index = ? AND points_applied = 0'
+    )->execute([(int)$round['id'], (int)$round['current_step']]);
+    $pdo->prepare("UPDATE party_rounds SET status = 'result', ends_at = NULL WHERE id = ? AND status = 'active'")
+        ->execute([(int)$round['id']]);
+    party_bump_room_version($pdo, $roomId);
+}
+
+function party_close_higher_lower_card(PDO $pdo, array $round, int $roomId): void
+{
+    if ($round['status'] !== 'active') return;
+    $answersQuery = $pdo->prepare(
+        'SELECT player_id, points FROM party_higher_lower_answers
+         WHERE round_id = ? AND card_index = ? AND points_applied = 0 FOR UPDATE'
+    );
+    $answersQuery->execute([(int)$round['id'], (int)$round['current_step']]);
+    party_apply_round_scores($pdo, (int)$round['id'], $answersQuery->fetchAll());
+    $pdo->prepare(
+        'UPDATE party_higher_lower_answers SET points_applied = 1
+         WHERE round_id = ? AND card_index = ? AND points_applied = 0'
     )->execute([(int)$round['id'], (int)$round['current_step']]);
     $pdo->prepare("UPDATE party_rounds SET status = 'result', ends_at = NULL WHERE id = ? AND status = 'active'")
         ->execute([(int)$round['id']]);
@@ -605,8 +755,19 @@ function party_connected_player_count(PDO $pdo, int $roomId): int
 
 function party_question_answer_count(PDO $pdo, int $roundId, int $questionIndex): int
 {
-    $query = $pdo->prepare('SELECT COUNT(*) FROM party_quiz_answers WHERE round_id = ? AND question_index = ?');
-    $query->execute([$roundId, $questionIndex]);
+    return party_game_answer_count($pdo, 'quiz', $roundId, $questionIndex);
+}
+
+function party_game_answer_count(PDO $pdo, string $gameKey, int $roundId, int $step): int
+{
+    if ($gameKey === 'quiz') {
+        $query = $pdo->prepare('SELECT COUNT(*) FROM party_quiz_answers WHERE round_id = ? AND question_index = ?');
+    } elseif ($gameKey === 'higher_lower') {
+        $query = $pdo->prepare('SELECT COUNT(*) FROM party_higher_lower_answers WHERE round_id = ? AND card_index = ?');
+    } else {
+        return 0;
+    }
+    $query->execute([$roundId, $step]);
     return (int)$query->fetchColumn();
 }
 

@@ -53,12 +53,5 @@ function party_quiz_question_order(): array
 
 function party_quiz_score(bool $correct, int $elapsedMs, int $limitMs = PARTY_QUIZ_LIMIT_MS): int
 {
-    if (!$correct) {
-        return 0;
-    }
-
-    $limitMs = max(1, $limitMs);
-    $elapsedMs = max(0, min($elapsedMs, $limitMs));
-    $speedBonus = (int)round(500 * (1 - ($elapsedMs / $limitMs)));
-    return 1000 + max(0, $speedBonus);
+    return party_timed_score($correct, $elapsedMs, $limitMs);
 }

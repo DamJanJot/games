@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/gierkoteka/party/lib.php';
 require dirname(__DIR__) . '/gierkoteka/party/quiz.php';
+require dirname(__DIR__) . '/gierkoteka/party/higher-lower.php';
+require dirname(__DIR__) . '/gierkoteka/party/tournament.php';
 
 $failures = [];
 
@@ -33,6 +35,24 @@ check(party_quiz_question(999) === null, 'brak nieznanego pytania quizu');
 check(party_quiz_score(false, 100) === 0, 'brak punktów za błędną odpowiedź');
 check(party_quiz_score(true, 0) === 1500, 'maksymalny wynik za natychmiastową odpowiedź');
 check(party_quiz_score(true, PARTY_QUIZ_LIMIT_MS) === 1000, 'minimalny wynik za poprawną odpowiedź');
+check(party_tournament_game_order() === ['quiz', 'higher_lower'], 'kolejność gier w turnieju');
+check(party_game_definition('higher_lower')['label'] === 'Więcej czy mniej', 'definicja drugiej gry');
+check(count(party_higher_lower_cards()) === 5, 'liczba porównań Więcej czy mniej');
+check(party_higher_lower_card(1) !== null, 'pobranie porównania Więcej czy mniej');
+check(party_higher_lower_card(999) === null, 'brak nieznanego porównania');
+check(party_higher_lower_choice(' MORE ') === 'more', 'normalizacja wyboru więcej');
+check(party_higher_lower_choice('equal') === null, 'odrzucenie nieznanego wyboru');
+check(party_higher_lower_score(true, 0) === party_quiz_score(true, 0), 'wspólna punktacja obu gier');
+check(party_game_step_count('quiz', ['question_ids' => [1, 2]]) === 2, 'liczba etapów Quizu');
+check(party_game_step_count('higher_lower', ['card_ids' => [1, 2, 3]]) === 3, 'liczba etapów porównań');
+
+$ranked = party_rank_leaderboard([
+    ['id' => 1, 'score_total' => 1200, 'seat' => 0],
+    ['id' => 2, 'score_total' => 1200, 'seat' => 1],
+    ['id' => 3, 'score_total' => 900, 'seat' => 2],
+]);
+check($ranked[0]['rank'] === 1 && $ranked[1]['rank'] === 1, 'wspólne miejsce przy remisie');
+check($ranked[2]['rank'] === 3, 'miejsce po remisie');
 
 if ($failures) {
     fwrite(STDERR, "Niepowodzenia:\n- " . implode("\n- ", $failures) . "\n");

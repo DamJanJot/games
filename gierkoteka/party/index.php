@@ -28,8 +28,8 @@
             <h2>Jeden pokój, kilka telefonów i seria krótkich gier.</h2>
             <p>Utwórz pokój jako gospodarz albo wpisz sześci znakowy kod otrzymany od znajomego.</p>
             <div class="foundation-note">
-                <strong>Pierwszy etap</strong>
-                <span>Pokój i gracze są gotowi do testów. Pierwszą grą będzie Quiz.</span>
+                <strong>Dwie gry, jeden wynik</strong>
+                <span>Quiz i Więcej czy mniej tworzą pierwszy pełny turniej ze wspólną tabelą.</span>
             </div>
         </div>
 
@@ -106,12 +106,29 @@
                 <h2 data-mode-title>Wspólny ekran</h2>
                 <p data-mode-description>Telewizor lub laptop pokaże pytania i tabelę, a telefony będą kontrolerami.</p>
                 <div class="next-step">
-                    <span>Następny etap</span>
-                    <strong>Quiz</strong>
-                    <p>Pytania, odpowiedzi, limit czasu i pierwsza wspólna punktacja.</p>
+                    <span>Kolejność rund</span>
+                    <strong>Quiz → Więcej czy mniej</strong>
+                    <p>Dwie krótkie gry korzystają z jednego rankingu turnieju.</p>
                 </div>
-                <button class="primary-button" type="button" disabled data-start-button>Uruchom Quiz</button>
+                <button class="primary-button" type="button" disabled data-start-button>Uruchom turniej</button>
                 <p class="start-requirements" data-start-requirements>Potrzeba minimum dwóch gotowych graczy.</p>
+                <button class="text-button" type="button" data-leave>Opuść pokój</button>
+            </aside>
+        </div>
+
+        <div class="tournament-layout" data-room-stage="preparation" hidden>
+            <section class="tournament-card preparation-card">
+                <span class="eyebrow" data-preparation-progress>Runda 1/2</span>
+                <h2 data-preparation-title>Quiz</h2>
+                <p data-preparation-description></p>
+                <ol class="tournament-order" data-tournament-order></ol>
+                <p class="quiz-waiting" data-preparation-waiting></p>
+                <button class="primary-button" type="button" data-tournament-advance hidden>Rozpocznij rundę</button>
+            </section>
+
+            <aside class="score-card">
+                <span class="eyebrow">Ranking turnieju</span>
+                <ol class="score-list" data-preparation-score-list></ol>
                 <button class="text-button" type="button" data-leave>Opuść pokój</button>
             </aside>
         </div>
@@ -131,7 +148,7 @@
                     <p class="quiz-your-points" data-quiz-your-points></p>
                 </div>
                 <p class="quiz-waiting" data-quiz-waiting></p>
-                <button class="primary-button quiz-advance" type="button" data-quiz-advance hidden>Pokaż wyniki</button>
+                <button class="primary-button quiz-advance" type="button" data-game-advance hidden>Pokaż wyniki</button>
             </section>
 
             <aside class="score-card">
@@ -141,10 +158,63 @@
             </aside>
         </div>
 
+        <div class="quiz-layout higher-lower-layout" data-room-stage="higher_lower" hidden>
+            <section class="quiz-card higher-lower-card">
+                <div class="quiz-progress">
+                    <span data-higher-progress>Porównanie 1/5</span>
+                    <strong data-higher-timer>20</strong>
+                    <span data-higher-answers-count>0/0 odpowiedzi</span>
+                </div>
+                <span class="eyebrow higher-category" data-higher-category></span>
+                <div class="comparison-reference">
+                    <span>Punkt odniesienia</span>
+                    <strong data-higher-reference-label></strong>
+                    <small data-higher-reference-value></small>
+                </div>
+                <h2 class="quiz-question higher-question" data-higher-question></h2>
+                <div class="higher-choices" data-higher-choices></div>
+                <div class="quiz-result" data-higher-result hidden>
+                    <strong data-higher-result-title>Wynik porównania</strong>
+                    <p data-higher-target-value></p>
+                    <p data-higher-explanation></p>
+                    <p class="quiz-your-points" data-higher-your-points></p>
+                </div>
+                <p class="quiz-waiting" data-higher-waiting></p>
+                <button class="primary-button quiz-advance" type="button" data-game-advance hidden>Pokaż wyniki</button>
+            </section>
+
+            <aside class="score-card">
+                <span class="eyebrow">Ranking turnieju</span>
+                <ol class="score-list" data-higher-score-list></ol>
+                <button class="text-button" type="button" data-leave>Opuść pokój</button>
+            </aside>
+        </div>
+
+        <div class="tournament-layout" data-room-stage="round_result" hidden>
+            <section class="tournament-card round-result-card">
+                <span class="eyebrow" data-round-result-progress>Wynik rundy</span>
+                <h2 data-round-result-title></h2>
+                <p>Punkty z tej rundy zostały dodane do wspólnego wyniku.</p>
+                <ol class="score-list score-list--round" data-round-score-list></ol>
+                <p class="quiz-waiting" data-round-result-waiting></p>
+                <button class="primary-button" type="button" data-tournament-advance hidden>Pokaż tabelę turnieju</button>
+            </section>
+        </div>
+
+        <div class="tournament-layout" data-room-stage="leaderboard" hidden>
+            <section class="tournament-card leaderboard-card">
+                <span class="eyebrow">Tabela turnieju</span>
+                <h2 data-leaderboard-title>Wyniki po rundzie</h2>
+                <ol class="score-list score-list--final" data-tournament-score-list></ol>
+                <p class="quiz-waiting" data-leaderboard-waiting></p>
+                <button class="primary-button" type="button" data-tournament-advance hidden>Następna runda</button>
+            </section>
+        </div>
+
         <div class="final-card" data-room-stage="results" hidden>
-            <span class="eyebrow">Koniec pierwszej gry</span>
-            <h2>Wyniki Quizu</h2>
-            <p>To pierwszy działający moduł turnieju. Kolejne gry będą korzystać z tej samej tabeli punktów.</p>
+            <span class="eyebrow">Koniec turnieju</span>
+            <h2 data-final-title>Wyniki turnieju</h2>
+            <p data-final-summary>Quiz i Więcej czy mniej zakończone. Oto wspólna tabela punktów.</p>
             <ol class="score-list score-list--final" data-final-score-list></ol>
             <div class="final-actions">
                 <button class="small-button" type="button" data-copy-link>Kopiuj link</button>

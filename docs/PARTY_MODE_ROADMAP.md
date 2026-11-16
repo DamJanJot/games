@@ -47,7 +47,7 @@ Stan: działa zestaw pięciu pytań, zegar serwerowy, pojedyncza odpowiedź grac
 
 Quiz będzie pierwszą grą, ponieważ najszybciej sprawdzi synchronizację, sterowanie telefonami, wynik rundy i ranking całego turnieju.
 
-### 3. Silnik turnieju
+### 3. Silnik turnieju — grywalna wersja lokalna
 
 - lista rund i wybór kolejności gier;
 - stany: poczekalnia, przygotowanie, gra, wynik rundy, tabela, koniec;
@@ -56,11 +56,13 @@ Quiz będzie pierwszą grą, ponieważ najszybciej sprawdzi synchronizację, ste
 - możliwość wznowienia pokoju po odświeżeniu strony;
 - podsumowanie końcowe.
 
+Stan: turniej prowadzi graczy przez poczekalnię, przygotowanie rundy, aktywną grę, wynik rundy, tabelę i ekran końcowy. Kolejność rund jest zapisana w pokoju, odświeżenie odtwarza bieżący stan, a wspólny adapter punktów sumuje wyniki wszystkich modułów. Ranking zachowuje wspólne miejsce przy remisie; osobna runda dogrywkowa pozostaje kolejnym rozszerzeniem.
+
 ### 4. Następne gry
 
 Każda gra dostanie adapter zwracający punkty w tym samym formacie:
 
-1. **Więcej czy mniej** — szybki drugi moduł, mało treści i prosty wynik.
+1. **Więcej czy mniej** — zaimplementowane lokalnie: pięć porównań, zegar, wynik odpowiedzi i wspólna punktacja.
 2. **Czółko** — telefon gracza pokazuje hasło, pozostali udzielają podpowiedzi.
 3. **Familiada** — gospodarz odsłania odpowiedzi i przyznaje punkty drużynom.
 
@@ -100,4 +102,4 @@ Po uruchomieniu aplikacji z testową bazą można wykonać pełny przepływ pole
 powershell -NoProfile -ExecutionPolicy Bypass -File tests\party_api_integration.ps1
 ```
 
-Skrypt nie korzysta z produkcji. Tworzy cztery sesje, czeka na próg offline, sprawdza bezpieczny powrót każdej sesji, rozgrywa pięć pytań, sprawdza ranking i potwierdza przekazanie roli gospodarza. Test trwa około 25 sekund ze względu na kontrolowaną przerwę w aktywności.
+Skrypt nie korzysta z produkcji. Tworzy cztery sesje, czeka na próg offline, sprawdza bezpieczny powrót każdej sesji, rozgrywa pięć pytań i pięć porównań, sprawdza oba wyniki rund, ranking końcowy oraz przekazanie roli gospodarza. Test trwa około 35 sekund ze względu na kontrolowaną przerwę w aktywności.

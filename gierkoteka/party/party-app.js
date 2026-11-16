@@ -28,9 +28,38 @@
   const quizExplanation = document.querySelector('[data-quiz-explanation]');
   const quizYourPoints = document.querySelector('[data-quiz-your-points]');
   const quizWaiting = document.querySelector('[data-quiz-waiting]');
-  const quizAdvance = document.querySelector('[data-quiz-advance]');
   const scoreList = document.querySelector('[data-score-list]');
+  const higherProgress = document.querySelector('[data-higher-progress]');
+  const higherTimer = document.querySelector('[data-higher-timer]');
+  const higherAnswersCount = document.querySelector('[data-higher-answers-count]');
+  const higherCategory = document.querySelector('[data-higher-category]');
+  const higherReferenceLabel = document.querySelector('[data-higher-reference-label]');
+  const higherReferenceValue = document.querySelector('[data-higher-reference-value]');
+  const higherQuestion = document.querySelector('[data-higher-question]');
+  const higherChoices = document.querySelector('[data-higher-choices]');
+  const higherResult = document.querySelector('[data-higher-result]');
+  const higherResultTitle = document.querySelector('[data-higher-result-title]');
+  const higherTargetValue = document.querySelector('[data-higher-target-value]');
+  const higherExplanation = document.querySelector('[data-higher-explanation]');
+  const higherYourPoints = document.querySelector('[data-higher-your-points]');
+  const higherWaiting = document.querySelector('[data-higher-waiting]');
+  const higherScoreList = document.querySelector('[data-higher-score-list]');
+  const preparationProgress = document.querySelector('[data-preparation-progress]');
+  const preparationTitle = document.querySelector('[data-preparation-title]');
+  const preparationDescription = document.querySelector('[data-preparation-description]');
+  const preparationWaiting = document.querySelector('[data-preparation-waiting]');
+  const preparationScoreList = document.querySelector('[data-preparation-score-list]');
+  const tournamentOrder = document.querySelector('[data-tournament-order]');
+  const roundResultProgress = document.querySelector('[data-round-result-progress]');
+  const roundResultTitle = document.querySelector('[data-round-result-title]');
+  const roundResultWaiting = document.querySelector('[data-round-result-waiting]');
+  const roundScoreList = document.querySelector('[data-round-score-list]');
+  const leaderboardTitle = document.querySelector('[data-leaderboard-title]');
+  const leaderboardWaiting = document.querySelector('[data-leaderboard-waiting]');
+  const tournamentScoreList = document.querySelector('[data-tournament-score-list]');
   const finalScoreList = document.querySelector('[data-final-score-list]');
+  const finalTitle = document.querySelector('[data-final-title]');
+  const finalSummary = document.querySelector('[data-final-summary]');
 
   let currentRoomCode = '';
   let currentToken = '';
@@ -39,6 +68,7 @@
   let polling = false;
   let installPrompt = null;
   let localDeadline = 0;
+  let activeTimerElement = null;
   let pollFailures = 0;
 
   class PartyRequestError extends Error {
@@ -73,9 +103,18 @@
 
   function setButtonBusy(button, busy, busyLabel = 'Chwila…') {
     if (!button) return;
-    button.dataset.label ||= button.textContent;
-    button.disabled = busy;
-    button.textContent = busy ? busyLabel : button.dataset.label;
+    if (busy) {
+      button.dataset.idleLabel = button.textContent;
+      button.dataset.busyLabel = busyLabel;
+      button.disabled = true;
+      button.textContent = busyLabel;
+      return;
+    }
+    if (button.textContent === button.dataset.busyLabel) {
+      button.textContent = button.dataset.idleLabel || button.textContent;
+    }
+    button.disabled = false;
+    delete button.dataset.busyLabel;
   }
 
   function setFormBusy(form, busy) {
@@ -158,24 +197,39 @@
 
   function renderState(state) {
     currentState = state;
-    const { room, players, you, game, leaderboard } = state;
+    const { room, players, you, game, leaderboard, tournament } = state;
     roomCodeElement.textContent = room.code;
     playerCount.textContent = `${players.length}/${room.max_players}`;
+    const ownPlayer = players.find((player) => player.id === you.id);
+    if (ownPlayer) you.is_ready = ownPlayer.is_ready;
 
+    activeTimerElement = null;
+    localDeadline = 0;
     if (room.status === 'lobby') {
       showRoomStage('lobby');
       renderLobby(state);
-    } else if (room.status === 'results') {
+    } else if (room.status === 'preparation') {
+      showRoomStage('preparation');
+      renderPreparation(tournament, leaderboard, you);
+    } else if (room.status === 'round_result') {
+      showRoomStage('round_result');
+      renderRoundResult(tournament, you);
+    } else if (room.status === 'leaderboard') {
+      showRoomStage('leaderboard');
+      renderTournamentLeaderboard(tournament, leaderboard, you);
+    } else if (room.status === 'finished' || room.status === 'results') {
       showRoomStage('results');
-      renderScoreList(finalScoreList, leaderboard, true);
+      renderFinal(tournament, leaderboard);
+    } else if (game?.key === 'higher_lower') {
+      showRoomStage('higher_lower');
+      renderHigherLower(state);
+      renderScoreList(higherScoreList, leaderboard);
     } else {
       showRoomStage('quiz');
       renderQuiz(state);
-      renderScoreList(scoreList, leaderboard, false);
+      renderScoreList(scoreList, leaderboard);
     }
-
-    const ownPlayer = players.find((player) => player.id === you.id);
-    if (ownPlayer) you.is_ready = ownPlayer.is_ready;
+    updateTimer();
   }
 
   function renderLobby({ room, players, you }) {
@@ -227,7 +281,26 @@
         : onlineCount !== players.length
           ? `Online: ${onlineCount}/${players.length}. Poczekaj na powrót pozostałych.`
           : canStart ? 'Wszyscy są gotowi — można zaczynać.' : `Gotowi: ${readyCount}/${players.length}.`)
-      : 'Gospodarz uruchomi Quiz, gdy wszyscy będą gotowi.';
+      : 'Gospodarz uruchomi turniej, gdy wszyscy będą gotowi.';
+  }
+
+  function renderPreparation(tournament, leaderboard, you) {
+    const round = tournament.current_round;
+    preparationProgress.textContent = `Runda ${round.number}/${tournament.total_rounds}`;
+    preparationTitle.textContent = round.label;
+    preparationDescription.textContent = round.description;
+    tournamentOrder.replaceChildren(...tournament.order.map((game, index) => {
+      const item = document.createElement('li');
+      item.className = index < tournament.current_index ? 'is-complete' : index === tournament.current_index ? 'is-current' : '';
+      item.innerHTML = `<span>${index + 1}</span><strong></strong>`;
+      item.querySelector('strong').textContent = game.label;
+      return item;
+    }));
+    preparationWaiting.textContent = you.is_host
+      ? 'Gdy wszyscy widzą ten ekran, rozpocznij rundę.'
+      : 'Czekamy, aż gospodarz rozpocznie rundę.';
+    renderScoreList(preparationScoreList, leaderboard);
+    setStageAdvanceButton('preparation', you, 'Rozpocznij rundę');
   }
 
   function renderQuiz({ game, you, server_time_ms: serverTimeMs }) {
@@ -235,8 +308,8 @@
     quizProgress.textContent = `Pytanie ${game.question_number}/${game.question_count}`;
     quizAnswersCount.textContent = `${game.answers_received}/${game.players_expected} odpowiedzi`;
     quizQuestion.textContent = game.question;
+    activeTimerElement = quizTimer;
     localDeadline = game.ends_at_ms ? Date.now() + (game.ends_at_ms - serverTimeMs) : 0;
-    updateTimer();
 
     const showingResult = game.round_status !== 'active';
     quizAnswers.replaceChildren(...game.answers.map((answer, index) => {
@@ -270,48 +343,142 @@
       : showingResult ? 'Tym razem bez punktów.' : '';
     quizResultTitle.textContent = game.your_answer_index === game.correct_answer_index
       ? 'Dobra odpowiedź!' : 'Wynik pytania';
-
-    if (game.round_status === 'active') {
-      quizWaiting.textContent = game.your_answer_index === null
+    quizWaiting.textContent = game.round_status === 'active'
+      ? (game.your_answer_index === null
         ? 'Wybierz odpowiedź przed końcem czasu.'
-        : 'Odpowiedź zapisana. Czekamy na pozostałych graczy.';
-    } else {
-      quizWaiting.textContent = you.is_host
-        ? 'Sprawdź ranking i przejdź dalej.'
-        : 'Czekamy, aż gospodarz przejdzie dalej.';
-    }
-
-    quizAdvance.hidden = !you.is_host;
-    quizAdvance.textContent = game.round_status === 'active'
-      ? 'Pokaż wyniki'
-      : game.question_number < game.question_count ? 'Następne pytanie' : 'Zakończ Quiz';
+        : 'Odpowiedź zapisana. Czekamy na pozostałych graczy.')
+      : you.is_host ? 'Sprawdź wynik i przejdź dalej.' : 'Czekamy, aż gospodarz przejdzie dalej.';
+    setGameAdvanceButton('quiz', you, game, 'question_number', 'question_count', 'Zakończ rundę');
   }
 
-  function renderScoreList(container, leaderboard, final) {
+  function renderHigherLower({ game, you, server_time_ms: serverTimeMs }) {
+    if (!game) return;
+    higherProgress.textContent = `Porównanie ${game.card_number}/${game.card_count}`;
+    higherAnswersCount.textContent = `${game.answers_received}/${game.players_expected} odpowiedzi`;
+    higherCategory.textContent = game.category;
+    higherReferenceLabel.textContent = game.reference_label;
+    higherReferenceValue.textContent = game.reference_value;
+    higherQuestion.textContent = game.question;
+    activeTimerElement = higherTimer;
+    localDeadline = game.ends_at_ms ? Date.now() + (game.ends_at_ms - serverTimeMs) : 0;
+
+    const showingResult = game.round_status !== 'active';
+    higherChoices.replaceChildren(...game.choices.map((choice) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `higher-choice higher-choice--${choice.key}`;
+      button.dataset.choice = choice.key;
+      button.disabled = !game.can_answer;
+      if (game.your_choice === choice.key) button.classList.add('is-selected');
+      if (showingResult && game.correct_choice === choice.key) button.classList.add('is-correct');
+      if (showingResult && game.your_choice === choice.key && game.correct_choice !== choice.key) {
+        button.classList.add('is-wrong');
+      }
+      const symbol = document.createElement('span');
+      symbol.textContent = choice.key === 'more' ? '↑' : '↓';
+      const label = document.createElement('strong');
+      label.textContent = choice.label;
+      button.append(symbol, label);
+      if (showingResult) {
+        const count = document.createElement('small');
+        count.textContent = `${game.answer_distribution?.[choice.key] || 0} gł.`;
+        button.append(count);
+      }
+      return button;
+    }));
+
+    higherResult.hidden = !showingResult;
+    higherTargetValue.textContent = showingResult ? `${game.target_label}: ${game.target_value}` : '';
+    higherExplanation.textContent = showingResult ? game.explanation : '';
+    higherYourPoints.textContent = showingResult && game.your_points !== null
+      ? `Zdobywasz ${game.your_points} pkt.`
+      : showingResult ? 'Tym razem bez punktów.' : '';
+    higherResultTitle.textContent = game.your_choice === game.correct_choice
+      ? 'Dobre porównanie!' : 'Wynik porównania';
+    higherWaiting.textContent = game.round_status === 'active'
+      ? (game.your_choice === null
+        ? 'Wybierz więcej albo mniej przed końcem czasu.'
+        : 'Odpowiedź zapisana. Czekamy na pozostałych graczy.')
+      : you.is_host ? 'Sprawdź wynik i przejdź dalej.' : 'Czekamy, aż gospodarz przejdzie dalej.';
+    setGameAdvanceButton('higher_lower', you, game, 'card_number', 'card_count', 'Zakończ rundę');
+  }
+
+  function setGameAdvanceButton(stage, you, game, numberKey, countKey, finishLabel) {
+    const button = document.querySelector(`[data-room-stage="${stage}"] [data-game-advance]`);
+    button.hidden = !you.is_host;
+    button.textContent = game.round_status === 'active'
+      ? 'Pokaż wyniki'
+      : game[numberKey] < game[countKey] ? 'Następne pytanie' : finishLabel;
+  }
+
+  function setStageAdvanceButton(stage, you, label) {
+    const button = document.querySelector(`[data-room-stage="${stage}"] [data-tournament-advance]`);
+    button.hidden = !you.is_host;
+    button.textContent = label;
+  }
+
+  function renderRoundResult(tournament, you) {
+    const round = tournament.current_round;
+    roundResultProgress.textContent = `Runda ${round.number}/${tournament.total_rounds} zakończona`;
+    roundResultTitle.textContent = `Wyniki: ${round.label}`;
+    roundResultWaiting.textContent = you.is_host
+      ? 'Pokaż wspólną tabelę po tej rundzie.'
+      : 'Czekamy na tabelę turnieju.';
+    renderScoreList(roundScoreList, tournament.round_leaderboard, { field: 'round_score', final: true });
+    setStageAdvanceButton('round_result', you, 'Pokaż tabelę turnieju');
+  }
+
+  function renderTournamentLeaderboard(tournament, leaderboard, you) {
+    const round = tournament.current_round;
+    leaderboardTitle.textContent = `Wyniki po rundzie ${round.number}/${tournament.total_rounds}`;
+    leaderboardWaiting.textContent = you.is_host
+      ? (tournament.has_next_round ? 'Przejdź do przygotowania następnej gry.' : 'Zakończ turniej i pokaż zwycięzców.')
+      : (tournament.has_next_round ? 'Czekamy na następną rundę.' : 'Czekamy na zakończenie turnieju.');
+    renderScoreList(tournamentScoreList, leaderboard, { final: true });
+    setStageAdvanceButton('leaderboard', you, tournament.has_next_round ? 'Następna runda' : 'Zakończ turniej');
+  }
+
+  function renderFinal(tournament, leaderboard) {
+    renderScoreList(finalScoreList, leaderboard, { final: true });
+    if (!leaderboard.length) return;
+    const winners = leaderboard.filter((player) => tournament.winner_ids.includes(player.id));
+    if (tournament.has_winner_tie) {
+      finalTitle.textContent = 'Remis na szczycie!';
+      finalSummary.textContent = `${winners.map((player) => player.nickname).join(' i ')} kończą turniej z takim samym wynikiem.`;
+    } else {
+      finalTitle.textContent = `Wygrywa ${leaderboard[0].nickname}!`;
+      finalSummary.textContent = 'Quiz i Więcej czy mniej zakończone. Oto wspólna tabela punktów.';
+    }
+  }
+
+  function renderScoreList(container, leaderboard, options = {}) {
+    const { final = false, field = 'score_total' } = options;
     container.replaceChildren(...leaderboard.map((player, index) => {
       const item = document.createElement('li');
       item.className = 'score-item';
       const place = document.createElement('span');
       place.className = 'score-place';
-      place.textContent = index < 3 && final ? ['🥇', '🥈', '🥉'][index] : `${index + 1}.`;
+      const rank = player.rank || index + 1;
+      place.textContent = final && rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : `${rank}.`;
       const name = document.createElement('strong');
       name.textContent = player.nickname;
       const points = document.createElement('span');
-      points.textContent = `${player.score_total} pkt`;
+      points.textContent = `${player[field] || 0} pkt`;
       item.append(place, name, points);
       return item;
     }));
   }
 
   function updateTimer() {
-    if (!quizTimer) return;
+    [quizTimer, higherTimer].forEach((timer) => timer?.classList.remove('is-ending'));
+    if (!activeTimerElement) return;
     if (!localDeadline) {
-      quizTimer.textContent = '—';
+      activeTimerElement.textContent = '—';
       return;
     }
     const seconds = Math.max(0, Math.ceil((localDeadline - Date.now()) / 1000));
-    quizTimer.textContent = String(seconds);
-    quizTimer.classList.toggle('is-ending', seconds <= 5);
+    activeTimerElement.textContent = String(seconds);
+    activeTimerElement.classList.toggle('is-ending', seconds <= 5);
   }
 
   async function pollRoom() {
@@ -401,11 +568,11 @@
   startButton.addEventListener('click', async () => {
     setButtonBusy(startButton, true, 'Uruchamiam…');
     try {
-      const payload = await request('start_quiz', {
+      const payload = await request('start_tournament', {
         method: 'POST', token: currentToken, body: { room_code: currentRoomCode },
       });
       renderState(payload.state);
-      setMessage('Quiz rozpoczęty!');
+      setMessage('Turniej rozpoczęty. Czas na pierwszą rundę!');
     } catch (error) {
       setMessage(error.message, true);
     } finally {
@@ -417,10 +584,21 @@
     const button = event.target.closest('[data-answer-index]');
     if (!button || button.disabled) return;
     quizAnswers.querySelectorAll('button').forEach((item) => { item.disabled = true; });
+    await submitGameAnswer({ answer: Number(button.dataset.answerIndex) });
+  });
+
+  higherChoices.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-choice]');
+    if (!button || button.disabled) return;
+    higherChoices.querySelectorAll('button').forEach((item) => { item.disabled = true; });
+    await submitGameAnswer({ choice: button.dataset.choice });
+  });
+
+  async function submitGameAnswer(answer) {
     try {
-      const payload = await request('answer_quiz', {
+      const payload = await request('submit_answer', {
         method: 'POST', token: currentToken,
-        body: { room_code: currentRoomCode, answer_index: Number(button.dataset.answerIndex) },
+        body: { room_code: currentRoomCode, ...answer },
       });
       renderState(payload.state);
       setMessage('Odpowiedź zapisana.');
@@ -428,20 +606,22 @@
       setMessage(error.message, true);
       schedulePoll(0);
     }
-  });
+  }
 
-  quizAdvance.addEventListener('click', async () => {
-    setButtonBusy(quizAdvance, true);
-    try {
-      const payload = await request('advance_quiz', {
-        method: 'POST', token: currentToken, body: { room_code: currentRoomCode },
-      });
-      renderState(payload.state);
-    } catch (error) {
-      setMessage(error.message, true);
-    } finally {
-      setButtonBusy(quizAdvance, false);
-    }
+  document.querySelectorAll('[data-tournament-advance], [data-game-advance]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      setButtonBusy(button, true);
+      try {
+        const payload = await request('advance_tournament', {
+          method: 'POST', token: currentToken, body: { room_code: currentRoomCode },
+        });
+        renderState(payload.state);
+      } catch (error) {
+        setMessage(error.message, true);
+      } finally {
+        setButtonBusy(button, false);
+      }
+    });
   });
 
   document.querySelectorAll('[data-copy-link]').forEach((button) => {
@@ -485,11 +665,8 @@
   window.addEventListener('online', () => {
     setConnectionState('reconnecting');
     pollFailures = 0;
-    if (currentRoomCode) {
-      schedulePoll(0);
-    } else {
-      restoreSession();
-    }
+    if (currentRoomCode) schedulePoll(0);
+    else restoreSession();
   });
 
   document.addEventListener('visibilitychange', () => {

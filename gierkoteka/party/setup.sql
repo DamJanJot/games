@@ -86,3 +86,20 @@ CREATE TABLE IF NOT EXISTS party_quiz_answers (
     UNIQUE KEY uniq_party_quiz_answer (round_id, player_id, question_index),
     INDEX idx_party_quiz_question (round_id, question_index)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci;
+
+CREATE TABLE IF NOT EXISTS party_higher_lower_answers (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    round_id BIGINT UNSIGNED NOT NULL,
+    player_id BIGINT UNSIGNED NOT NULL,
+    card_index INT UNSIGNED NOT NULL,
+    choice_value VARCHAR(10) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    is_correct TINYINT(1) NOT NULL DEFAULT 0,
+    points INT NOT NULL DEFAULT 0,
+    points_applied TINYINT(1) NOT NULL DEFAULT 0,
+    response_ms INT UNSIGNED NOT NULL DEFAULT 0,
+    answered_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    CONSTRAINT fk_party_higher_lower_answers_round FOREIGN KEY (round_id) REFERENCES party_rounds(id) ON DELETE CASCADE,
+    CONSTRAINT fk_party_higher_lower_answers_player FOREIGN KEY (player_id) REFERENCES party_players(id) ON DELETE CASCADE,
+    UNIQUE KEY uniq_party_higher_lower_answer (round_id, player_id, card_index),
+    INDEX idx_party_higher_lower_card (round_id, card_index)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci;

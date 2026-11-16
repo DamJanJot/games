@@ -50,6 +50,7 @@
 .host-card,
 .quiz-card,
 .score-card,
+.tournament-card,
 .final-card {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -495,13 +496,91 @@
   align-items: start;
 }
 
+.tournament-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(270px, 0.65fr);
+  gap: 14px;
+  align-items: start;
+}
+
 .quiz-card,
 .score-card,
+.tournament-card,
 .final-card {
   min-width: 0;
   display: grid;
   gap: 16px;
   padding: clamp(16px, 3vw, 28px);
+}
+
+.tournament-card h2 {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 4rem);
+  line-height: 1.05;
+}
+
+.tournament-card > p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.tournament-order {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tournament-order li {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.tournament-order li > span {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  background: #94a3b8;
+  font-weight: 950;
+}
+
+.tournament-order li.is-current {
+  border-color: rgba(124, 92, 255, 0.36);
+  color: var(--ink);
+  background: rgba(124, 92, 255, 0.08);
+}
+
+.tournament-order li.is-current > span {
+  background: var(--party-purple);
+}
+
+.tournament-order li.is-complete > span {
+  background: var(--party-green);
+}
+
+.preparation-card .primary-button,
+.round-result-card .primary-button,
+.leaderboard-card .primary-button {
+  justify-self: end;
+}
+
+.round-result-card,
+.leaderboard-card {
+  width: min(780px, 100%);
+  grid-column: 1 / -1;
+  justify-self: center;
 }
 
 .quiz-progress {
@@ -646,6 +725,118 @@
   justify-self: end;
 }
 
+.higher-category {
+  justify-self: center;
+  color: var(--party-purple);
+}
+
+.comparison-reference {
+  width: min(100%, 560px);
+  display: grid;
+  gap: 5px;
+  justify-self: center;
+  padding: 18px;
+  border: 1px solid rgba(124, 92, 255, 0.22);
+  border-radius: 11px;
+  background: rgba(124, 92, 255, 0.08);
+  text-align: center;
+}
+
+.comparison-reference > span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.comparison-reference > strong {
+  font-size: clamp(1.45rem, 4vw, 2.4rem);
+}
+
+.comparison-reference > small {
+  color: var(--party-purple);
+  font-weight: 900;
+}
+
+.higher-question {
+  font-size: clamp(1.55rem, 4.4vw, 3.1rem);
+}
+
+.higher-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.higher-choice {
+  min-height: 92px;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 2px solid transparent;
+  border-radius: 11px;
+  color: #ffffff;
+  background: var(--party-green);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 140ms ease, opacity 140ms ease, border-color 140ms ease;
+}
+
+.higher-choice--less {
+  background: var(--party-pink);
+}
+
+.higher-choice > span {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 1.8rem;
+  font-weight: 950;
+}
+
+.higher-choice strong {
+  font-size: clamp(1.1rem, 3vw, 1.5rem);
+}
+
+.higher-choice small {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 850;
+}
+
+.higher-choice:not(:disabled):hover,
+.higher-choice:not(:disabled):focus-visible {
+  transform: translateY(-2px);
+  border-color: #ffffff;
+}
+
+.higher-choice:disabled {
+  cursor: default;
+  opacity: 0.64;
+}
+
+.higher-choice.is-selected {
+  border-color: #132238;
+  box-shadow: 0 0 0 3px #ffd166;
+  opacity: 1;
+}
+
+.higher-choice.is-correct {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(37, 161, 142, 0.3);
+  opacity: 1;
+}
+
+.higher-choice.is-wrong {
+  filter: grayscale(0.6);
+  text-decoration: line-through;
+}
+
 .score-card {
   position: sticky;
   top: 16px;
@@ -726,7 +917,8 @@
 @media (max-width: 880px) {
   .party-landing,
   .room-layout,
-  .quiz-layout {
+  .quiz-layout,
+  .tournament-layout {
     grid-template-columns: 1fr;
   }
 
@@ -777,6 +969,7 @@
 
   .quiz-card,
   .score-card,
+  .tournament-card,
   .final-card {
     padding: 14px;
   }
@@ -799,5 +992,13 @@
 
   .quiz-answer {
     min-height: 68px;
+  }
+
+  .higher-choices {
+    grid-template-columns: 1fr;
+  }
+
+  .higher-choice {
+    min-height: 74px;
   }
 }
