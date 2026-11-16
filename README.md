@@ -29,7 +29,7 @@ Następnie otwórz `http://localhost:8000/gierkoteka/`.
 
 Makao wymaga PHP, MySQL oraz lokalnego pliku konfiguracyjnego utworzonego na podstawie `makao/config.example.php`. Schemat bazy znajduje się w `makao/setup.sql`.
 
-Tryb Party wymaga PHP i MySQL. Może użyć tych samych zmiennych `DB_*` co Makao albo osobnych `PARTY_DB_*` (w tym opcjonalnego `PARTY_DB_PORT`). Plan kolejnych etapów znajduje się w [`docs/PARTY_MODE_ROADMAP.md`](docs/PARTY_MODE_ROADMAP.md).
+Tryb Party wymaga PHP i osobnej bazy MySQL wskazanej przez `PARTY_DB_*` (opcjonalnie `PARTY_DB_PORT`) albo lokalny, niewersjonowany `gierkoteka/party/config.php`. Nie korzysta automatycznie ze wspólnych `DB_*`, ponieważ pierwsze wywołanie API tworzy jego tabele. Plan kolejnych etapów znajduje się w [`docs/PARTY_MODE_ROADMAP.md`](docs/PARTY_MODE_ROADMAP.md).
 
 ## Technologie
 

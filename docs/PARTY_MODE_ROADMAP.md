@@ -12,6 +12,7 @@ Pierwsza wersja obsłuży dwa sposoby prowadzenia rozgrywki:
 ## Decyzje techniczne
 
 - Backend: PHP 8.1+ i MySQL, zgodnie z obecnym hostingiem.
+- Baza Trybu Party jest wskazywana jawnie przez `PARTY_DB_*` lub lokalny `party/config.php`. Wspólne `DB_*` innych aplikacji nie są używane. Przed pierwszym wywołaniem API trzeba potwierdzić, że wskazana baza jest testowa i odizolowana; API tworzy w niej tabele `party_*`.
 - Synchronizacja: lekkie odpytywanie API co około 2 sekundy. WebSockety nie są wymagane na pierwszą wersję.
 - Pokój: sześci znakowy kod bez mylących znaków, np. `7KPM2R`.
 - Tożsamość: losowy token gracza. W bazie przechowywany jest wyłącznie jego skrót SHA-256.

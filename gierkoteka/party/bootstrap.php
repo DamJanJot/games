@@ -81,30 +81,39 @@ function party_get_pdo(): array
     }
 
     $fileValues = party_parse_env_file(dirname(__DIR__, 2) . '/.env');
-    $host = party_env_value('PARTY_DB_HOST', $fileValues) ?? party_env_value('DB_HOST', $fileValues);
-    $port = party_env_value('PARTY_DB_PORT', $fileValues) ?? party_env_value('DB_PORT', $fileValues, '3306');
-    $name = party_env_value('PARTY_DB_NAME', $fileValues) ?? party_env_value('DB_NAME', $fileValues);
-    $user = party_env_value('PARTY_DB_USER', $fileValues) ?? party_env_value('DB_USER', $fileValues);
-    $pass = party_env_value('PARTY_DB_PASS', $fileValues) ?? party_env_value('DB_PASS', $fileValues, '');
-
-    if (!$host || !$name || !$user) {
-        return ['pdo' => null, 'error' => 'Brakuje konfiguracji bazy dla Trybu Party.'];
+    $config = party_dedicated_db_config($fileValues);
+    if ($config === null) {
+        return ['pdo' => null, 'error' => 'Brakuje osobnej konfiguracji bazy dla Trybu Party.'];
     }
 
     try {
-        return [
-            'pdo' => party_connect([
-                'db_host' => $host,
-                'db_port' => (int)$port,
-                'db_name' => $name,
-                'db_user' => $user,
-                'db_pass' => $pass,
-            ]),
-            'error' => null,
-        ];
+        return ['pdo' => party_connect($config), 'error' => null];
     } catch (Throwable $error) {
         return ['pdo' => null, 'error' => 'Nie udało się połączyć z bazą Trybu Party.'];
     }
+}
+
+function party_dedicated_db_config(array $fileValues): ?array
+{
+    // A shared DB_* configuration may belong to other applications (or production).
+    // Party must be pointed at its own database explicitly before it creates tables.
+    $host = party_env_value('PARTY_DB_HOST', $fileValues);
+    $port = party_env_value('PARTY_DB_PORT', $fileValues, '3306');
+    $name = party_env_value('PARTY_DB_NAME', $fileValues);
+    $user = party_env_value('PARTY_DB_USER', $fileValues);
+    $pass = party_env_value('PARTY_DB_PASS', $fileValues, '');
+
+    if (!$host || !$name || !$user) {
+        return null;
+    }
+
+    return [
+        'db_host' => $host,
+        'db_port' => (int)$port,
+        'db_name' => $name,
+        'db_user' => $user,
+        'db_pass' => $pass,
+    ];
 }
 
 function party_ensure_schema(PDO $pdo): void

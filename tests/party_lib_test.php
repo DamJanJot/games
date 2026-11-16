@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/gierkoteka/party/lib.php';
+require dirname(__DIR__) . '/gierkoteka/party/bootstrap.php';
 require dirname(__DIR__) . '/gierkoteka/party/quiz.php';
 require dirname(__DIR__) . '/gierkoteka/party/higher-lower.php';
 require dirname(__DIR__) . '/gierkoteka/party/tournament.php';
@@ -45,6 +46,12 @@ check(party_higher_lower_choice('equal') === null, 'odrzucenie nieznanego wyboru
 check(party_higher_lower_score(true, 0) === party_quiz_score(true, 0), 'wspólna punktacja obu gier');
 check(party_game_step_count('quiz', ['question_ids' => [1, 2]]) === 2, 'liczba etapów Quizu');
 check(party_game_step_count('higher_lower', ['card_ids' => [1, 2, 3]]) === 3, 'liczba etapów porównań');
+
+check(party_dedicated_db_config([
+    'DB_HOST' => 'shared-host',
+    'DB_NAME' => 'shared-database',
+    'DB_USER' => 'shared-user',
+]) === null, 'wspólne DB_* nie powinny uruchamiać Trybu Party');
 
 $ranked = party_rank_leaderboard([
     ['id' => 1, 'score_total' => 1200, 'seat' => 0],

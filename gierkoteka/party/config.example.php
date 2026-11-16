@@ -1,5 +1,5 @@
 <?php
-// Skopiuj jako config.php tylko wtedy, gdy hosting nie udostępnia zmiennych DB_*.
+// Skopiuj jako niewersjonowany config.php tylko dla osobnej bazy Trybu Party.
 return [
     'db_host' => 'localhost',
     'db_port' => 3306,
