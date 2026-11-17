@@ -57,7 +57,7 @@ Quiz będzie pierwszą grą, ponieważ najszybciej sprawdzi synchronizację, ste
 - możliwość wznowienia pokoju po odświeżeniu strony;
 - podsumowanie końcowe.
 
-Stan: turniej prowadzi graczy przez poczekalnię, przygotowanie rundy, aktywną grę, wynik rundy, tabelę i ekran końcowy. Kolejność rund jest zapisana w pokoju, odświeżenie odtwarza bieżący stan, a wspólny adapter punktów sumuje wyniki wszystkich modułów. Ranking zachowuje wspólne miejsce przy remisie; osobna runda dogrywkowa pozostaje kolejnym rozszerzeniem.
+Stan: turniej prowadzi graczy przez poczekalnię, przygotowanie rundy, aktywną grę, wynik rundy, tabelę i ekran końcowy. Gospodarz wybiera jedną lub dwie różne gry, ich kolejność oraz limit 10–60 sekund na odpowiedź. Plan zapisuje się w pokoju i jest widoczny dla graczy; zmiana planu przed startem wycofuje gotowość. Odświeżenie odtwarza bieżący stan, a wspólny adapter punktów sumuje wyniki wszystkich modułów. Ranking zachowuje wspólne miejsce przy remisie; osobna runda dogrywkowa pozostaje kolejnym rozszerzeniem.
 
 ### 4. Następne gry
 
@@ -103,4 +103,4 @@ Po uruchomieniu aplikacji z testową bazą można wykonać pełny przepływ pole
 powershell -NoProfile -ExecutionPolicy Bypass -File tests\party_api_integration.ps1
 ```
 
-Skrypt nie korzysta z produkcji. Tworzy cztery sesje, czeka na próg offline, sprawdza bezpieczny powrót każdej sesji, rozgrywa pięć pytań i pięć porównań, sprawdza oba wyniki rund, ranking końcowy oraz przekazanie roli gospodarza. Test trwa około 35 sekund ze względu na kontrolowaną przerwę w aktywności.
+Skrypt nie korzysta z produkcji. Tworzy cztery sesje, czeka na próg offline, sprawdza bezpieczny powrót każdej sesji, rozgrywa pięć pytań i pięć porównań, sprawdza oba wyniki rund, ranking końcowy oraz przekazanie roli gospodarza. Sprawdza też uprawnienia do zmiany planu, reset gotowości, pojedynczą rundę i limit 10 sekund. Test trwa około 30 sekund ze względu na kontrolowaną przerwę w aktywności. Na Windows można uruchomić `tests\run_party_api_local.ps1`, który tworzy tymczasową, odizolowaną bazę MariaDB i lokalny serwer PHP, wykonuje test, a następnie usuwa dane testowe.

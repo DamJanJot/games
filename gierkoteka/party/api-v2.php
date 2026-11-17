@@ -37,6 +37,7 @@ try {
         'state' => party_dispatch('GET', fn() => party_get_state($pdo)),
         'heartbeat' => party_dispatch('POST', fn() => party_heartbeat($pdo, $body)),
         'ready' => party_dispatch('POST', fn() => party_set_ready($pdo, $body)),
+        'update_plan' => party_dispatch('POST', fn() => party_update_plan($pdo, $body)),
         'start_tournament' => party_dispatch('POST', fn() => party_start_tournament($pdo, $body)),
         'submit_answer' => party_dispatch('POST', fn() => party_submit_answer($pdo, $body)),
         'advance_tournament' => party_dispatch('POST', fn() => party_advance_tournament($pdo, $body)),
@@ -197,6 +198,41 @@ function party_set_ready(PDO $pdo, array $body): never
     party_json(['ok' => true, 'state' => party_state_payload($pdo, $session)]);
 }
 
+function party_update_plan(PDO $pdo, array $body): never
+{
+    $plan = party_validate_tournament_plan($body);
+    if ($plan === null) {
+        party_fail('Wybierz jedną lub dwie różne gry i poprawny czas odpowiedzi.', 422, 'invalid_plan');
+    }
+    $roomCode = party_normalize_room_code((string)($body['room_code'] ?? ''));
+    $token = party_token_from_request();
+    $changed = false;
+    $pdo->beginTransaction();
+    try {
+        $session = party_load_session($pdo, $roomCode, $token, true);
+        party_require_host($session);
+        if ($session['room_status'] !== 'lobby') {
+            party_fail('Plan można zmienić tylko przed rozpoczęciem turnieju.', 409, 'room_already_started');
+        }
+        if ($plan !== party_tournament_plan_from_room($session)) {
+            $changed = true;
+            $settings = json_encode($plan, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+            $update = $pdo->prepare('UPDATE gk_party_rooms SET settings_json = ?, state_version = state_version + 1 WHERE id = ?');
+            $update->execute([$settings, (int)$session['room_id']]);
+            $reset = $pdo->prepare("UPDATE gk_party_players SET is_ready = 0 WHERE room_id = ? AND status = 'connected'");
+            $reset->execute([(int)$session['room_id']]);
+            $session['is_ready'] = 0;
+        }
+        party_touch_player($pdo, (int)$session['player_id']);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        party_roll_back($pdo);
+        throw $error;
+    }
+    $session = party_load_session($pdo, $roomCode, $token);
+    party_json(['ok' => true, 'changed' => $changed, 'state' => party_state_payload($pdo, $session)]);
+}
+
 function party_start_tournament(PDO $pdo, array $body, bool $startImmediately = false): never
 {
     $roomCode = party_normalize_room_code((string)($body['room_code'] ?? ''));
@@ -228,13 +264,14 @@ function party_start_tournament(PDO $pdo, array $body, bool $startImmediately = 
             party_fail('Wszyscy gracze muszą najpierw oznaczyć gotowość.', 409, 'players_not_ready');
         }
 
-        $order = party_tournament_game_order();
+        $plan = party_tournament_plan_from_room($session);
+        $order = $plan['round_order'];
         $settings = json_encode(
-            ['round_order' => $order],
+            $plan,
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
         );
         $roundNumber = 1;
-        $round = party_create_round($pdo, (int)$session['room_id'], $roundNumber, $order[0]);
+        $round = party_create_round($pdo, (int)$session['room_id'], $roundNumber, $order[0], $plan['question_limit_seconds']);
         $roomUpdate = $pdo->prepare(
             "UPDATE gk_party_rooms
              SET status = 'preparation', current_game_key = ?, round_number = ?, settings_json = ?,
@@ -405,11 +442,12 @@ function party_advance_tournament(PDO $pdo, array $body): never
                 "UPDATE gk_party_rooms SET status = 'leaderboard', state_version = state_version + 1 WHERE id = ?"
             )->execute([(int)$session['room_id']]);
         } elseif ($roomStatus === 'leaderboard') {
-            $order = party_tournament_order_from_room($room);
+            $plan = party_tournament_plan_from_room($room);
+            $order = $plan['round_order'];
             $nextRoundNumber = (int)$room['round_number'] + 1;
             if ($nextRoundNumber <= count($order)) {
                 $nextGameKey = $order[$nextRoundNumber - 1];
-                party_create_round($pdo, (int)$session['room_id'], $nextRoundNumber, $nextGameKey);
+                party_create_round($pdo, (int)$session['room_id'], $nextRoundNumber, $nextGameKey, $plan['question_limit_seconds']);
                 $pdo->prepare(
                     "UPDATE gk_party_rooms
                      SET status = 'preparation', current_game_key = ?, round_number = ?,
@@ -479,7 +517,7 @@ function party_load_session(PDO $pdo, string $roomCode, string $token, bool $for
     $sql = "SELECT
                 r.id AS room_id, r.room_code, r.status AS room_status, r.play_mode,
                 r.host_player_id, r.current_game_key, r.round_number, r.state_version,
-                r.max_players, r.expires_at,
+                r.max_players, r.expires_at, r.settings_json,
                 p.id AS player_id, p.nickname, p.role, p.color, p.seat,
                 p.score_total, p.status AS player_status, p.is_ready
             FROM gk_party_rooms r
@@ -786,12 +824,6 @@ function party_require_host(array $session): void
 function party_bump_room_version(PDO $pdo, int $roomId): void
 {
     $pdo->prepare('UPDATE gk_party_rooms SET state_version = state_version + 1 WHERE id = ?')->execute([$roomId]);
-}
-
-function party_json_object(string $json): array
-{
-    $value = json_decode($json, true);
-    return is_array($value) ? $value : [];
 }
 
 function party_roll_back(PDO $pdo): void

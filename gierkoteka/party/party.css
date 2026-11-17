@@ -483,6 +483,86 @@
   color: rgba(255, 255, 255, 0.7);
 }
 
+.next-step ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.next-step li {
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.plan-editor {
+  display: grid;
+  gap: 11px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.plan-editor > strong {
+  font-size: 1.03rem;
+}
+
+.plan-editor label {
+  display: grid;
+  gap: 5px;
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.plan-editor select {
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #ffffff;
+}
+
+.plan-editor .plan-second-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-editor p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.plan-editor button {
+  justify-self: start;
+}
+
+.network-note {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(239, 71, 111, 0.3);
+  border-radius: 9px;
+  color: #9d2147;
+  background: rgba(239, 71, 111, 0.09);
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.plan-editor[hidden],
+.network-note[hidden] {
+  display: none;
+}
+
 .text-button {
   min-height: 40px;
   color: var(--muted);

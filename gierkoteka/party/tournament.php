@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 const PARTY_TOURNAMENT_ORDER = ['quiz', 'higher_lower'];
+const PARTY_QUESTION_LIMIT_OPTIONS = [10, 20, 30, 45, 60];
 
 function party_tournament_game_order(): array
 {
@@ -41,9 +42,9 @@ function party_timed_score(bool $correct, int $elapsedMs, int $limitMs): int
     return 1000 + max(0, $speedBonus);
 }
 
-function party_game_config(string $gameKey): array
+function party_game_config(string $gameKey, ?int $questionLimitSeconds = null): array
 {
-    return match ($gameKey) {
+    $config = match ($gameKey) {
         'quiz' => [
             'question_ids' => party_quiz_question_order(),
             'question_limit_ms' => PARTY_QUIZ_LIMIT_MS,
@@ -54,6 +55,10 @@ function party_game_config(string $gameKey): array
         ],
         default => throw new InvalidArgumentException('Nieznana gra turniejowa.'),
     };
+    if ($questionLimitSeconds !== null) {
+        $config['question_limit_ms'] = $questionLimitSeconds * 1000;
+    }
+    return $config;
 }
 
 function party_game_step_count(string $gameKey, array $config): int
@@ -92,22 +97,45 @@ function party_rank_leaderboard(array $players): array
     return $players;
 }
 
-function party_tournament_order_from_room(array $room): array
+function party_validate_tournament_plan(array $input): ?array
 {
-    $settings = party_json_object((string)($room['settings_json'] ?? ''));
-    $requested = is_array($settings['round_order'] ?? null) ? $settings['round_order'] : [];
+    $requested = $input['round_order'] ?? null;
+    if (!is_array($requested) || !array_is_list($requested)
+        || count($requested) < 1 || count($requested) > count(party_game_catalog())) {
+        return null;
+    }
     $catalog = party_game_catalog();
-    $order = array_values(array_filter(
-        array_map('strval', $requested),
-        static fn(string $key): bool => isset($catalog[$key])
-    ));
-    return $order ?: party_tournament_game_order();
+    $order = [];
+    foreach ($requested as $key) {
+        if (!is_string($key) || !isset($catalog[$key]) || in_array($key, $order, true)) {
+            return null;
+        }
+        $order[] = $key;
+    }
+    $seconds = $input['question_limit_seconds'] ?? null;
+    if (!is_int($seconds) || !in_array($seconds, PARTY_QUESTION_LIMIT_OPTIONS, true)) {
+        return null;
+    }
+    return ['round_order' => $order, 'question_limit_seconds' => $seconds];
 }
 
-function party_create_round(PDO $pdo, int $roomId, int $roundNumber, string $gameKey): array
+function party_tournament_plan_from_room(array $room): array
+{
+    $settings = party_json_object((string)($room['settings_json'] ?? ''));
+    $settings += ['round_order' => party_tournament_game_order(), 'question_limit_seconds' => 20];
+    return party_validate_tournament_plan($settings)
+        ?? ['round_order' => party_tournament_game_order(), 'question_limit_seconds' => 20];
+}
+
+function party_tournament_order_from_room(array $room): array
+{
+    return party_tournament_plan_from_room($room)['round_order'];
+}
+
+function party_create_round(PDO $pdo, int $roomId, int $roundNumber, string $gameKey, ?int $questionLimitSeconds = null): array
 {
     $config = json_encode(
-        party_game_config($gameKey),
+        party_game_config($gameKey, $questionLimitSeconds),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
     );
     $insert = $pdo->prepare(
@@ -214,7 +242,8 @@ function party_round_scoreboard(PDO $pdo, int $roomId, int $roundId): array
 
 function party_tournament_payload(PDO $pdo, array $room, array $leaderboard): array
 {
-    $order = party_tournament_order_from_room($room);
+    $plan = party_tournament_plan_from_room($room);
+    $order = $plan['round_order'];
     $round = party_current_round($pdo, (int)$room['id']);
     $roundsQuery = $pdo->prepare(
         'SELECT round_number, game_key, status FROM gk_party_rounds WHERE room_id = ? ORDER BY round_number ASC'
@@ -249,6 +278,7 @@ function party_tournament_payload(PDO $pdo, array $room, array $leaderboard): ar
         'rounds' => $rounds,
         'current_index' => max(0, (int)$room['round_number'] - 1),
         'total_rounds' => count($order),
+        'question_limit_seconds' => $plan['question_limit_seconds'],
         'has_next_round' => (int)$room['round_number'] < count($order),
         'current_round' => $round ? [
             'id' => (int)$round['id'],

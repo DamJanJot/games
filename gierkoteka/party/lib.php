@@ -82,6 +82,12 @@ function party_read_json_body(): array
     return is_array($decoded) ? $decoded : [];
 }
 
+function party_json_object(string $json): array
+{
+    $value = json_decode($json, true);
+    return is_array($value) ? $value : [];
+}
+
 function party_token_from_request(): string
 {
     $token = trim((string)($_SERVER['HTTP_X_PARTY_TOKEN'] ?? ''));

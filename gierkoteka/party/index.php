@@ -28,8 +28,8 @@
             <h2>Jeden pokój, kilka telefonów i seria krótkich gier.</h2>
             <p>Utwórz pokój jako gospodarz albo wpisz sześci znakowy kod otrzymany od znajomego.</p>
             <div class="foundation-note">
-                <strong>Dwie gry, jeden wynik</strong>
-                <span>Quiz i Więcej czy mniej tworzą pierwszy pełny turniej ze wspólną tabelą.</span>
+                <strong>Wybierz rundy, zbieraj punkty</strong>
+                <span>Quiz i Więcej czy mniej możesz rozegrać osobno albo połączyć w turniej ze wspólną tabelą.</span>
             </div>
         </div>
 
@@ -86,6 +86,7 @@
                 <button type="button" class="small-button quiet" data-install hidden>Zainstaluj</button>
             </div>
         </div>
+        <p class="network-note" data-network-note role="status" aria-live="polite" hidden>Połączenie przerwane. Akcje są wstrzymane do czasu pobrania aktualnego stanu pokoju.</p>
 
         <div class="room-layout" data-room-stage="lobby">
             <section class="lobby-card">
@@ -107,9 +108,36 @@
                 <p data-mode-description>Telewizor lub laptop pokaże pytania i tabelę, a telefony będą kontrolerami.</p>
                 <div class="next-step">
                     <span>Kolejność rund</span>
-                    <strong>Quiz → Więcej czy mniej</strong>
-                    <p>Dwie krótkie gry korzystają z jednego rankingu turnieju.</p>
+                    <ol data-plan-order></ol>
+                    <p data-plan-duration>20 sekund na odpowiedź · jeden wspólny ranking.</p>
                 </div>
+                <form class="plan-editor" data-plan-form hidden>
+                    <strong>Ułóż turniej</strong>
+                    <label>Pierwsza gra
+                        <select name="first_game">
+                            <option value="quiz">Quiz</option>
+                            <option value="higher_lower">Więcej czy mniej</option>
+                        </select>
+                    </label>
+                    <label class="plan-second-toggle"><input type="checkbox" name="include_second" checked> Dodaj drugą rundę</label>
+                    <label>Druga gra
+                        <select name="second_game">
+                            <option value="higher_lower">Więcej czy mniej</option>
+                            <option value="quiz">Quiz</option>
+                        </select>
+                    </label>
+                    <label>Czas na jedną odpowiedź
+                        <select name="question_seconds">
+                            <option value="10">10 sekund</option>
+                            <option value="20" selected>20 sekund</option>
+                            <option value="30">30 sekund</option>
+                            <option value="45">45 sekund</option>
+                            <option value="60">60 sekund</option>
+                        </select>
+                    </label>
+                    <p>Zmiana planu wycofa gotowość graczy. Każdy zobaczy nową kolejność przed startem.</p>
+                    <button type="submit" class="small-button">Zapisz plan</button>
+                </form>
                 <button class="primary-button" type="button" disabled data-start-button>Uruchom turniej</button>
                 <p class="start-requirements" data-start-requirements>Potrzeba minimum dwóch gotowych graczy.</p>
                 <button class="text-button" type="button" data-leave>Opuść pokój</button>
@@ -214,7 +242,7 @@
         <div class="final-card" data-room-stage="results" hidden>
             <span class="eyebrow">Koniec turnieju</span>
             <h2 data-final-title>Wyniki turnieju</h2>
-            <p data-final-summary>Quiz i Więcej czy mniej zakończone. Oto wspólna tabela punktów.</p>
+            <p data-final-summary>Oto wspólna tabela punktów z rozegranych rund.</p>
             <ol class="score-list score-list--final" data-final-score-list></ol>
             <div class="final-actions">
                 <button class="small-button" type="button" data-copy-link>Kopiuj link</button>

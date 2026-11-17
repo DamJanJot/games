@@ -37,6 +37,23 @@ check(party_quiz_score(false, 100) === 0, 'brak punktów za błędną odpowiedź
 check(party_quiz_score(true, 0) === 1500, 'maksymalny wynik za natychmiastową odpowiedź');
 check(party_quiz_score(true, PARTY_QUIZ_LIMIT_MS) === 1000, 'minimalny wynik za poprawną odpowiedź');
 check(party_tournament_game_order() === ['quiz', 'higher_lower'], 'kolejność gier w turnieju');
+check(party_validate_tournament_plan([
+    'round_order' => ['higher_lower', 'quiz'], 'question_limit_seconds' => 30,
+]) === ['round_order' => ['higher_lower', 'quiz'], 'question_limit_seconds' => 30], 'własna kolejność rund');
+check(party_validate_tournament_plan([
+    'round_order' => ['quiz'], 'question_limit_seconds' => 10,
+]) !== null, 'turniej z jedną rundą');
+check(party_validate_tournament_plan([
+    'round_order' => ['quiz', 'quiz'], 'question_limit_seconds' => 20,
+]) === null, 'odrzucenie powtórzonej gry');
+check(party_validate_tournament_plan([
+    'round_order' => ['quiz'], 'question_limit_seconds' => 999,
+]) === null, 'odrzucenie czasu poza zakresem');
+check(party_tournament_plan_from_room(['settings_json' => '{}'])
+    === ['round_order' => ['quiz', 'higher_lower'], 'question_limit_seconds' => 20],
+    'domyślny plan starszego pokoju');
+check(party_game_config('quiz', 30)['question_limit_ms'] === 30000, 'czas quizu według planu');
+check(party_game_config('higher_lower', 10)['question_limit_ms'] === 10000, 'czas porównania według planu');
 check(party_game_definition('higher_lower')['label'] === 'Więcej czy mniej', 'definicja drugiej gry');
 check(count(party_higher_lower_cards()) === 5, 'liczba porównań Więcej czy mniej');
 check(party_higher_lower_card(1) !== null, 'pobranie porównania Więcej czy mniej');

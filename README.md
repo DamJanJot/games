@@ -11,7 +11,7 @@ Zbiór przeglądarkowych gier i eksperymentów logicznych. Repozytorium zawiera 
 ## Zawartość
 
 - `gierkoteka/` — hub gier napisany w HTML, CSS i JavaScript
-- `gierkoteka/party/` — poczekalnia i dwurundowy turniej z Quizem, grą Więcej czy mniej, wspólną punktacją, obecnością online oraz odzyskiwaniem sesji
+- `gierkoteka/party/` — poczekalnia i turniej z jedną lub dwiema rundami (Quiz, Więcej czy mniej), wyborem kolejności i czasu odpowiedzi, wspólną punktacją oraz odzyskiwaniem sesji po utracie sieci
 - Sudoku
 - Pasjans
 - gry logiczne Blocks, Lines i Arrows

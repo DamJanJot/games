@@ -18,6 +18,14 @@
   const installButton = document.querySelector('[data-install]');
   const message = document.querySelector('[data-message]');
   const connectionStatus = document.querySelector('[data-connection-status]');
+  const networkNote = document.querySelector('[data-network-note]');
+  const planOrder = document.querySelector('[data-plan-order]');
+  const planDuration = document.querySelector('[data-plan-duration]');
+  const planForm = document.querySelector('[data-plan-form]');
+  const firstGameSelect = planForm.elements.first_game;
+  const secondGameSelect = planForm.elements.second_game;
+  const includeSecond = planForm.elements.include_second;
+  const questionSecondsSelect = planForm.elements.question_seconds;
   const quizProgress = document.querySelector('[data-quiz-progress]');
   const quizTimer = document.querySelector('[data-quiz-timer]');
   const quizAnswersCount = document.querySelector('[data-quiz-answers-count]');
@@ -70,6 +78,8 @@
   let localDeadline = 0;
   let activeTimerElement = null;
   let pollFailures = 0;
+  let connectionMode = navigator.onLine ? 'connected' : 'offline';
+  let renderedPlanFingerprint = '';
 
   class PartyRequestError extends Error {
     constructor(text, status = 0, code = 'request_failed') {
@@ -90,15 +100,42 @@
   }
 
   function setConnectionState(state) {
-    if (!connectionStatus) return;
+    connectionMode = state;
     const labels = {
       connected: 'Połączono',
       reconnecting: 'Łączenie ponownie…',
       offline: 'Brak sieci',
     };
-    connectionStatus.classList.toggle('is-reconnecting', state === 'reconnecting');
-    connectionStatus.classList.toggle('is-offline', state === 'offline');
-    connectionStatus.querySelector('strong').textContent = labels[state] || labels.connected;
+    if (connectionStatus) {
+      connectionStatus.classList.toggle('is-reconnecting', state === 'reconnecting');
+      connectionStatus.classList.toggle('is-offline', state === 'offline');
+      connectionStatus.querySelector('strong').textContent = labels[state] || labels.connected;
+    }
+    if (networkNote) {
+      networkNote.hidden = state === 'connected';
+      networkNote.textContent = state === 'offline'
+        ? 'Brak połączenia. Akcje są wstrzymane; po powrocie sieci pobierzemy aktualny stan pokoju.'
+        : 'Sprawdzam aktualny stan pokoju. Akcje odblokują się po potwierdzeniu połączenia.';
+    }
+    syncNetworkActions();
+  }
+
+  function syncNetworkActions() {
+    const blocked = connectionMode !== 'connected';
+    const controls = document.querySelectorAll(
+      '[data-create-form] button, [data-join-form] button, [data-plan-form] button, '
+      + '[data-ready-button], [data-start-button], [data-game-advance], '
+      + '[data-tournament-advance], [data-leave], [data-answer-index], [data-choice]',
+    );
+    controls.forEach((control) => {
+      if (blocked) {
+        if (!control.disabled) control.dataset.networkLocked = '1';
+        control.disabled = true;
+      } else if (control.dataset.networkLocked === '1') {
+        control.disabled = false;
+        delete control.dataset.networkLocked;
+      }
+    });
   }
 
   function setButtonBusy(button, busy, busyLabel = 'Chwila…') {
@@ -115,17 +152,27 @@
     }
     button.disabled = false;
     delete button.dataset.busyLabel;
+    syncNetworkActions();
   }
 
   function setFormBusy(form, busy) {
     const button = form.querySelector('button[type="submit"]');
-    form.querySelectorAll('input, button').forEach((control) => {
+    form.querySelectorAll('input, select, button').forEach((control) => {
       control.disabled = busy;
     });
     setButtonBusy(button, busy);
+    if (form === planForm && !busy) secondGameSelect.disabled = !includeSecond.checked;
+    syncNetworkActions();
   }
 
   async function request(action, options = {}) {
+    if (!navigator.onLine) {
+      setConnectionState('offline');
+      throw new PartyRequestError('Brak połączenia z internetem. Spróbuj po powrocie sieci.', 0, 'offline');
+    }
+    if ((options.method || 'GET') !== 'GET' && connectionMode !== 'connected') {
+      throw new PartyRequestError('Poczekaj, aż pobierzemy aktualny stan pokoju.', 0, 'reconnecting');
+    }
     const headers = { Accept: 'application/json' };
     if (options.token) headers['X-Party-Token'] = options.token;
     if (options.body) headers['Content-Type'] = 'application/json';
@@ -155,7 +202,6 @@
       ok: false,
       error: { message: 'Serwer zwrócił nieprawidłową odpowiedź.' },
     }));
-    setConnectionState('connected');
     if (!response.ok || !payload.ok) {
       throw new PartyRequestError(
         payload.error?.message || 'Nie udało się połączyć z pokojem.',
@@ -163,6 +209,7 @@
         payload.error?.code || 'request_failed',
       );
     }
+    if (navigator.onLine) setConnectionState('connected');
     return payload;
   }
 
@@ -230,15 +277,34 @@
       renderScoreList(scoreList, leaderboard);
     }
     updateTimer();
+    syncNetworkActions();
   }
 
-  function renderLobby({ room, players, you }) {
+  function renderLobby({ room, players, you, tournament }) {
     emptyPlayers.hidden = players.length > 1;
     const screenMode = room.mode === 'screen';
     modeTitle.textContent = screenMode ? 'Wspólny ekran' : 'Same telefony';
     modeDescription.textContent = screenMode
       ? 'Telewizor lub laptop pokaże pytania i tabelę, a telefony będą kontrolerami.'
       : 'Każdy gracz zobaczy przebieg gry na swoim telefonie. Dodatkowy ekran nie jest potrzebny.';
+
+    const order = tournament.order;
+    planOrder.replaceChildren(...order.map((game, index) => {
+      const item = document.createElement('li');
+      item.textContent = `${index + 1}. ${game.label}`;
+      return item;
+    }));
+    planDuration.textContent = `${tournament.question_limit_seconds} sekund na odpowiedź · jeden wspólny ranking.`;
+    planForm.hidden = !you.is_host;
+    const fingerprint = JSON.stringify([order.map((game) => game.key), tournament.question_limit_seconds]);
+    if (fingerprint !== renderedPlanFingerprint) {
+      firstGameSelect.value = order[0]?.key || 'quiz';
+      includeSecond.checked = order.length > 1;
+      secondGameSelect.value = order[1]?.key || (firstGameSelect.value === 'quiz' ? 'higher_lower' : 'quiz');
+      questionSecondsSelect.value = String(tournament.question_limit_seconds);
+      secondGameSelect.disabled = !includeSecond.checked;
+      renderedPlanFingerprint = fingerprint;
+    }
 
     playerList.replaceChildren(...players.map((player) => {
       const item = document.createElement('li');
@@ -447,7 +513,9 @@
       finalSummary.textContent = `${winners.map((player) => player.nickname).join(' i ')} kończą turniej z takim samym wynikiem.`;
     } else {
       finalTitle.textContent = `Wygrywa ${leaderboard[0].nickname}!`;
-      finalSummary.textContent = 'Quiz i Więcej czy mniej zakończone. Oto wspólna tabela punktów.';
+      finalSummary.textContent = tournament.order.length === 1
+        ? `Runda ${tournament.order[0].label} zakończona. Oto wspólna tabela punktów.`
+        : `Rundy ${tournament.order.map((game) => game.label).join(' i ')} zakończone. Oto wspólna tabela punktów.`;
     }
   }
 
@@ -549,6 +617,45 @@
     event.target.value = event.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 6);
   });
 
+  firstGameSelect.addEventListener('change', () => {
+    if (secondGameSelect.value === firstGameSelect.value) {
+      secondGameSelect.value = firstGameSelect.value === 'quiz' ? 'higher_lower' : 'quiz';
+    }
+  });
+
+  includeSecond.addEventListener('change', () => {
+    secondGameSelect.disabled = !includeSecond.checked;
+  });
+
+  planForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const order = [firstGameSelect.value];
+    if (includeSecond.checked) order.push(secondGameSelect.value);
+    if (new Set(order).size !== order.length) {
+      setMessage('Wybierz dwie różne gry.', true);
+      return;
+    }
+    setFormBusy(planForm, true);
+    try {
+      const payload = await request('update_plan', {
+        method: 'POST', token: currentToken,
+        body: {
+          room_code: currentRoomCode,
+          round_order: order,
+          question_limit_seconds: Number(questionSecondsSelect.value),
+        },
+      });
+      renderState(payload.state);
+      setMessage(payload.changed
+        ? 'Plan zapisany. Gracze mogą ponownie oznaczyć gotowość.'
+        : 'Plan nie wymagał zmian.');
+    } catch (error) {
+      setMessage(error.message, true);
+    } finally {
+      setFormBusy(planForm, false);
+    }
+  });
+
   readyButton.addEventListener('click', async () => {
     setButtonBusy(readyButton, true);
     try {
@@ -577,6 +684,7 @@
       setMessage(error.message, true);
     } finally {
       setButtonBusy(startButton, false);
+      if (currentState?.room.status === 'lobby') renderState(currentState);
     }
   });
 
@@ -663,10 +771,14 @@
   });
 
   window.addEventListener('online', () => {
-    setConnectionState('reconnecting');
     pollFailures = 0;
-    if (currentRoomCode) schedulePoll(0);
-    else restoreSession();
+    if (currentRoomCode || new URLSearchParams(window.location.search).has('room')) {
+      setConnectionState('reconnecting');
+      if (currentRoomCode) schedulePoll(0);
+      else restoreSession();
+    } else {
+      setConnectionState('connected');
+    }
   });
 
   document.addEventListener('visibilitychange', () => {
@@ -691,6 +803,7 @@
     joinForm.elements.room_code.value = code;
     const token = localStorage.getItem(sessionKey(code));
     if (!token) {
+      if (navigator.onLine) setConnectionState('connected');
       joinForm.elements.nickname.focus();
       setMessage('Wpisz pseudonim, aby dołączyć do pokoju.');
       return;
@@ -713,5 +826,6 @@
   }
 
   window.setInterval(updateTimer, 250);
+  setConnectionState(connectionMode);
   restoreSession();
 })();

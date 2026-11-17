@@ -52,11 +52,53 @@ $guestTokens = @($guestSessions | ForEach-Object { $_.token })
 $allTokens = @($hostToken) + $guestTokens
 Assert-Party ($guestSessions[-1].state.players.Count -eq 4) 'w pokoju powinien byc gospodarz i trzech gosci'
 
+$guestPlanRejected = $false
+try {
+    Invoke-PartyApi -Action 'update_plan' -Token $guestTokens[0] -Body @{
+        room_code = $roomCode; round_order = @('higher_lower', 'quiz'); question_limit_seconds = 30
+    } | Out-Null
+} catch {
+    $guestPlanRejected = [int]$_.Exception.Response.StatusCode -eq 403
+}
+Assert-Party $guestPlanRejected 'gosc nie moze zmienic planu rund'
+
+$invalidPlanRejected = $false
+try {
+    Invoke-PartyApi -Action 'update_plan' -Token $hostToken -Body @{
+        room_code = $roomCode; round_order = @('quiz', 'quiz'); question_limit_seconds = 20
+    } | Out-Null
+} catch {
+    $invalidPlanRejected = [int]$_.Exception.Response.StatusCode -eq 422
+}
+Assert-Party $invalidPlanRejected 'powtorzona gra musi zostac odrzucona'
+
+$customPlan = Invoke-PartyApi -Action 'update_plan' -Token $hostToken -Body @{
+    room_code = $roomCode; round_order = @('higher_lower', 'quiz'); question_limit_seconds = 30
+}
+Assert-Party ($customPlan.state.tournament.order[0].key -eq 'higher_lower') 'gospodarz moze zmienic pierwsza gre'
+Assert-Party ($customPlan.state.tournament.question_limit_seconds -eq 30) 'gospodarz moze zmienic czas odpowiedzi'
+$guestPlan = Invoke-PartyApi -Action 'state' -Method 'GET' -Token $guestTokens[0] -Query "&room=$roomCode"
+Assert-Party ($guestPlan.state.tournament.order[0].key -eq 'higher_lower') 'gosc widzi plan gospodarza'
+Invoke-PartyApi -Action 'update_plan' -Token $hostToken -Body @{
+    room_code = $roomCode; round_order = @('quiz', 'higher_lower'); question_limit_seconds = 20
+} | Out-Null
+
 $readyState = $null
 foreach ($token in $allTokens) {
     $readyState = Invoke-PartyApi -Action 'ready' -Token $token -Body @{ room_code = $roomCode; ready = $true }
 }
 Assert-Party (@($readyState.state.players | Where-Object { -not $_.is_ready }).Count -eq 0) 'wszyscy gracze powinni byc gotowi'
+
+$changedPlan = Invoke-PartyApi -Action 'update_plan' -Token $hostToken -Body @{
+    room_code = $roomCode; round_order = @('quiz', 'higher_lower'); question_limit_seconds = 30
+}
+Assert-Party (@($changedPlan.state.players | Where-Object { $_.is_ready }).Count -eq 0) 'zmiana planu zeruje gotowosc'
+Invoke-PartyApi -Action 'update_plan' -Token $hostToken -Body @{
+    room_code = $roomCode; round_order = @('quiz', 'higher_lower'); question_limit_seconds = 20
+} | Out-Null
+foreach ($token in $allTokens) {
+    $readyState = Invoke-PartyApi -Action 'ready' -Token $token -Body @{ room_code = $roomCode; ready = $true }
+}
 
 Start-Sleep -Seconds 22
 $staleProbe = Invoke-PartyApi -Action 'state' -Method 'GET' -Token $guestTokens[-1] -Query "&room=$roomCode"
@@ -180,6 +222,31 @@ Invoke-PartyApi -Action 'leave' -Token $hostToken -Body @{ room_code = $roomCode
 $afterTransfer = Invoke-PartyApi -Action 'state' -Method 'GET' -Token $guestTokens[0] -Query "&room=$roomCode"
 Assert-Party ($afterTransfer.state.you.is_host -eq $true) 'rola gospodarza powinna przejsc na pozostalego gracza'
 
+$shortHost = Invoke-PartyApi -Action 'create' -Body @{ nickname = 'Krotki gospodarz'; mode = 'phones' }
+$shortCode = $shortHost.state.room.code
+$shortGuest = Invoke-PartyApi -Action 'join' -Body @{ room_code = $shortCode; nickname = 'Krotki gosc' }
+$shortPlan = Invoke-PartyApi -Action 'update_plan' -Token $shortHost.token -Body @{
+    room_code = $shortCode; round_order = @('higher_lower'); question_limit_seconds = 10
+}
+Assert-Party ($shortPlan.changed -eq $true) 'zmiana planu powinna zostac potwierdzona'
+Assert-Party ($shortPlan.state.tournament.total_rounds -eq 1) 'plan moze miec jedna runde'
+Invoke-PartyApi -Action 'ready' -Token $shortHost.token -Body @{ room_code = $shortCode; ready = $true } | Out-Null
+Invoke-PartyApi -Action 'ready' -Token $shortGuest.token -Body @{ room_code = $shortCode; ready = $true } | Out-Null
+$shortPrepared = Invoke-PartyApi -Action 'start_tournament' -Token $shortHost.token -Body @{ room_code = $shortCode }
+Assert-Party ($shortPrepared.state.tournament.current_round.key -eq 'higher_lower') 'wybrana gra startuje jako pierwsza'
+$shortStarted = Invoke-PartyApi -Action 'advance_tournament' -Token $shortHost.token -Body @{ room_code = $shortCode }
+$remainingMs = [long]$shortStarted.state.game.ends_at_ms - [long]$shortStarted.state.server_time_ms
+Assert-Party ($remainingMs -gt 8000 -and $remainingMs -le 10000) 'wybrany limit 10 sekund jest ustawiony na serwerze'
+$latePlanRejected = $false
+try {
+    Invoke-PartyApi -Action 'update_plan' -Token $shortHost.token -Body @{
+        room_code = $shortCode; round_order = @('quiz'); question_limit_seconds = 20
+    } | Out-Null
+} catch {
+    $latePlanRejected = [int]$_.Exception.Response.StatusCode -eq 409
+}
+Assert-Party $latePlanRejected 'po starcie planu nie mozna zmienic'
+
 [pscustomobject]@{
     result = 'PASS'
     room = $roomCode
@@ -190,4 +257,5 @@ Assert-Party ($afterTransfer.state.you.is_host -eq $true) 'rola gospodarza powin
     sessions_recovered = 4
     total_points = ($afterTransfer.state.leaderboard | Measure-Object -Property score_total -Sum).Sum
     host_transferred = $afterTransfer.state.you.is_host
+    custom_plan_verified = $latePlanRejected
 } | ConvertTo-Json -Compress
