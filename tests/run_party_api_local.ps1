@@ -52,6 +52,11 @@ try {
       -e "CREATE DATABASE $database CHARACTER SET utf8mb4 COLLATE utf8mb4_polish_ci"
     if ($LASTEXITCODE -ne 0) { throw 'Nie udało się utworzyć testowej bazy.' }
 
+    # Apply the explicit schema before starting HTTP; API requests never execute DDL.
+    $schema = Get-Content -LiteralPath (Join-Path $repoRoot 'gierkoteka/party/setup.sql') -Raw
+    & $mysql --protocol=tcp -h 127.0.0.1 -P $dbPort -u root "-p$password" $database -e $schema
+    if ($LASTEXITCODE -ne 0) { throw 'Nie udało się zastosować jawnego schematu Party.' }
+
     $env:PARTY_DB_HOST = '127.0.0.1'
     $env:PARTY_DB_PORT = [string]$dbPort
     $env:PARTY_DB_NAME = $database
