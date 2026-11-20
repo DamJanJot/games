@@ -7,6 +7,9 @@
   const createForm = document.querySelector('[data-create-form]');
   const joinForm = document.querySelector('[data-join-form]');
   const roomCodeElement = document.querySelector('[data-room-code]');
+  const roomMode = document.querySelector('[data-room-mode]');
+  const roomRole = document.querySelector('[data-room-role]');
+  const roomGuidance = document.querySelector('[data-room-guidance]');
   const playerList = document.querySelector('[data-player-list]');
   const emptyPlayers = document.querySelector('[data-empty-players]');
   const playerCount = document.querySelector('[data-player-count]');
@@ -246,6 +249,13 @@
     currentState = state;
     const { room, players, you, game, leaderboard, tournament } = state;
     roomCodeElement.textContent = room.code;
+    roomView.dataset.mode = room.mode;
+    roomMode.textContent = room.mode === 'phones' ? 'Same telefony' : 'Wspólny ekran';
+    roomRole.textContent = you.is_host ? 'Grasz jako gospodarz' : 'Grasz jako uczestnik';
+    roomGuidance.hidden = room.mode !== 'phones';
+    roomGuidance.textContent = you.is_host
+      ? 'Odpowiadasz i zdobywasz punkty jak każdy gracz. Dodatkowo uruchamiasz rundy i przechodzisz dalej po wynikach. Poczekaj, aż wszyscy je przeczytają.'
+      : 'Pytania, Twoje wyniki i ranking zobaczysz tutaj. Odpowiadaj na swoim telefonie; gospodarz przechodzi do kolejnych etapów.';
     playerCount.textContent = `${players.length}/${room.max_players}`;
     const ownPlayer = players.find((player) => player.id === you.id);
     if (ownPlayer) you.is_ready = ownPlayer.is_ready;
@@ -472,8 +482,9 @@
   function setGameAdvanceButton(stage, you, game, numberKey, countKey, finishLabel) {
     const button = document.querySelector(`[data-room-stage="${stage}"] [data-game-advance]`);
     button.hidden = !you.is_host;
+    button.closest('[data-game-host-controls]').hidden = !you.is_host;
     button.textContent = game.round_status === 'active'
-      ? 'Pokaż wyniki'
+      ? (currentState.room.mode === 'phones' ? 'Zakończ pytanie wcześniej' : 'Pokaż wyniki')
       : game[numberKey] < game[countKey] ? 'Następne pytanie' : finishLabel;
   }
 
@@ -521,15 +532,17 @@
 
   function renderScoreList(container, leaderboard, options = {}) {
     const { final = false, field = 'score_total' } = options;
-    container.replaceChildren(...leaderboard.map((player, index) => {
+    container.replaceChildren(...leaderboard.map((player) => {
       const item = document.createElement('li');
       item.className = 'score-item';
       const place = document.createElement('span');
       place.className = 'score-place';
-      const rank = player.rank || index + 1;
+      const rank = player.rank || leaderboard.findIndex((entry) => entry[field] === player[field]) + 1;
+      const isYou = player.id === currentState?.you.id;
+      item.classList.toggle('is-you', isYou);
       place.textContent = final && rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : `${rank}.`;
       const name = document.createElement('strong');
-      name.textContent = player.nickname;
+      name.textContent = `${player.nickname}${isYou ? ' (Ty)' : ''}`;
       const points = document.createElement('span');
       points.textContent = `${player[field] || 0} pkt`;
       item.append(place, name, points);
@@ -577,9 +590,9 @@
 
   createForm.addEventListener('submit', async (event) => {
     event.preventDefault();
+    const data = new FormData(createForm);
     setFormBusy(createForm, true);
     setMessage('Tworzę pokój…');
-    const data = new FormData(createForm);
     try {
       const payload = await request('create', {
         method: 'POST',
@@ -596,9 +609,9 @@
 
   joinForm.addEventListener('submit', async (event) => {
     event.preventDefault();
+    const data = new FormData(joinForm);
     setFormBusy(joinForm, true);
     setMessage('Dołączam do pokoju…');
-    const data = new FormData(joinForm);
     try {
       const payload = await request('join', {
         method: 'POST',

@@ -1,6 +1,7 @@
 ﻿param(
     [string]$MariaDbBin = 'C:\xampp\mysql\bin',
-    [string]$PhpExe = 'php.exe'
+    [string]$PhpExe = 'php.exe',
+    [switch]$BrowserTests
 )
 
 $ErrorActionPreference = 'Stop'
@@ -85,8 +86,14 @@ try {
         $phpLog = Get-Content (Join-Path $dataDir 'php.err') -Tail 12 -ErrorAction SilentlyContinue
         throw "Lokalne API PHP nie uruchomiło się (HTTP $lastHttpStatus, $lastHttpError): $phpLog"
     }
-    & (Join-Path $PSScriptRoot 'party_api_integration.ps1') -BaseUrl $baseUrl
-    if ($LASTEXITCODE -ne 0) { throw 'Test integracyjny API zakończył się błędem.' }
+    foreach ($mode in @('screen', 'phones')) {
+        & (Join-Path $PSScriptRoot 'party_api_integration.ps1') -BaseUrl $baseUrl -Mode $mode
+        if ($LASTEXITCODE -ne 0) { throw 'Test integracyjny API nie przeszedl.' }
+    }
+    if ($BrowserTests) {
+        & node (Join-Path $PSScriptRoot 'party_phones_browser_test.cjs') ($baseUrl -replace 'api.php$', '')
+        if ($LASTEXITCODE -ne 0) { throw 'Test przegladarek nie przeszedl.' }
+    }
 } finally {
     if ($phpProcess -and -not $phpProcess.HasExited) { Stop-Process -Id $phpProcess.Id -Force }
     if ($dbProcess -and -not $dbProcess.HasExited) {

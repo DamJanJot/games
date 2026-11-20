@@ -1,5 +1,6 @@
 param(
-    [string]$BaseUrl = 'http://127.0.0.1:8098/gierkoteka/party/api.php'
+    [string]$BaseUrl = 'http://127.0.0.1:8098/gierkoteka/party/api.php',
+    [ValidateSet('screen', 'phones')][string]$Mode = 'screen'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -38,7 +39,7 @@ function Assert-Party {
     }
 }
 
-$hostSession = Invoke-PartyApi -Action 'create' -Body @{ nickname = 'Gospodarz'; mode = 'screen' }
+$hostSession = Invoke-PartyApi -Action 'create' -Body @{ nickname = 'Gospodarz'; mode = $Mode }
 $roomCode = $hostSession.state.room.code
 $hostToken = $hostSession.token
 Assert-Party ($roomCode.Length -eq 6) 'pokoj powinien otrzymac szesci znakowy kod'
@@ -249,6 +250,7 @@ Assert-Party $latePlanRejected 'po starcie planu nie mozna zmienic'
 
 [pscustomobject]@{
     result = 'PASS'
+    mode = $Mode
     room = $roomCode
     rounds = 2
     quiz_questions = 5
