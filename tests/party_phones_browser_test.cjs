@@ -9,12 +9,14 @@ assert(baseUrl && /^http:\/\/127\.0\.0\.1:\d+\//.test(baseUrl), 'Use a local tes
   const browser = await chromium.launch({ channel: process.env.PARTY_BROWSER_CHANNEL || 'chrome', headless: true });
   const errors = [];
   try {
+    const contexts = [];
     const pages = [];
     for (const width of [360, 390, 320, 412]) {
       const context = await browser.newContext({ viewport: { width, height: 800 }, isMobile: true, hasTouch: true });
       const page = await context.newPage();
       page.setDefaultTimeout(10000);
       page.on('pageerror', (error) => errors.push(error.message));
+      contexts.push(context);
       pages.push(page);
     }
     const [host, ...guests] = pages;
@@ -48,6 +50,26 @@ assert(baseUrl && /^http:\/\/127\.0\.0\.1:\d+\//.test(baseUrl), 'Use a local tes
     }
     await stage('lobby');
     assert.equal(await host.locator('[data-room-role]').textContent(), 'Grasz jako gospodarz');
+
+    const offlineGuest = guests[0];
+    await contexts[1].setOffline(true);
+    await offlineGuest.locator('[data-connection-status] strong').waitFor({ state: 'visible' });
+    await offlineGuest.waitForFunction(() => (
+      document.querySelector('[data-connection-status] strong')?.textContent === 'Brak sieci'
+      && !document.querySelector('[data-network-note]')?.hidden
+      && document.querySelector('[data-ready-button]')?.disabled
+    ));
+    assert.match(await offlineGuest.locator('[data-network-note]').textContent(), /Akcje są wstrzymane/);
+    await contexts[1].setOffline(false);
+    await offlineGuest.waitForFunction(() => (
+      document.querySelector('[data-connection-status] strong')?.textContent === 'Połączono'
+      && document.querySelector('[data-network-note]')?.hidden
+      && !document.querySelector('[data-ready-button]')?.disabled
+    ));
+
+    await host.locator('[name="question_seconds"]').selectOption('10');
+    await host.locator('[data-plan-form] button[type="submit"]').click();
+    await host.waitForFunction(() => document.querySelector('[data-plan-duration]')?.textContent.startsWith('10 sekund'));
     for (const page of pages) await page.locator('[data-ready-button]').click();
     await host.waitForFunction(() => !document.querySelector('[data-start-button]').disabled);
     await host.locator('[data-start-button]').click();
@@ -78,6 +100,30 @@ assert(baseUrl && /^http:\/\/127\.0\.0\.1:\d+\//.test(baseUrl), 'Use a local tes
         for (const page of pages) assert.equal(await page.locator(questionSelector).textContent(), question);
         assert.equal(await host.locator(`[data-room-stage="${game}"] [data-game-host-controls]`).isVisible(), true);
         for (const page of guests) assert.equal(await page.locator(`[data-room-stage="${game}"] [data-game-host-controls]`).isVisible(), false);
+        if (game === 'quiz' && number === 1) {
+          const token = await host.evaluate((code) => localStorage.getItem(`gierkoteka.party.${code}`), room);
+          await host.locator('[data-quiz-result]').waitFor({ state: 'visible', timeout: 15000 });
+          const lateAnswer = await host.evaluate(async ({ roomCode, roomToken }) => {
+            const response = await fetch('api.php?action=submit_answer', {
+              method: 'POST',
+              headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Party-Token': roomToken,
+              },
+              body: JSON.stringify({ room_code: roomCode, answer: 0 }),
+            });
+            return { status: response.status, payload: await response.json() };
+          }, { roomCode: room, roomToken: token });
+          assert.equal(lateAnswer.status, 409, 'Late answer rejected');
+          assert.equal(lateAnswer.payload.error.code, 'question_closed');
+          for (const page of pages) {
+            await page.locator('[data-quiz-result]').waitFor({ state: 'visible' });
+            assert.equal(await page.locator(`${answerSelector}:enabled`).count(), 0, 'Answers locked after timeout');
+          }
+          await advance(game);
+          continue;
+        }
         for (let index = 0; index < pages.length; index++) {
           await pages[index].locator(answerSelector).nth(index % (game === 'quiz' ? 4 : 2)).click();
         }
@@ -109,7 +155,7 @@ assert(baseUrl && /^http:\/\/127\.0\.0\.1:\d+\//.test(baseUrl), 'Use a local tes
     await guests[1].reload();
     await stage('results');
     assert.deepEqual(errors, [], 'No browser errors');
-    console.log(JSON.stringify({ result: 'PASS', mode: 'phones', mobile_sessions: 4, quiz_questions: 5, comparisons: 5, restored_host_and_guest: true, personal_results_and_rankings: true }));
+    console.log(JSON.stringify({ result: 'PASS', mode: 'phones', mobile_sessions: 4, quiz_questions: 5, comparisons: 5, restored_host_and_guest: true, offline_reconnect: true, late_answer_rejected: true, personal_results_and_rankings: true }));
   } finally {
     await browser.close();
   }

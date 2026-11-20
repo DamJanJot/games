@@ -110,7 +110,7 @@ Skrypt nie korzysta z produkcji. Tworzy cztery sesje, czeka na próg offline, sp
 
 Wariant pokazuje pytanie, osobisty wynik i ranking na każdym urządzeniu. Własny wpis w tabeli jest wyróżniony; remisy zachowują wspólne miejsce również w wyniku rundy. Gospodarz odpowiada i zdobywa punkty, a osobna sekcja sterowania pozwala wcześniej zamknąć pytanie oraz przechodzić dalej po wynikach.
 
-Lokalny runner wykonuje pełny test API osobno dla `screen` i `phones`. Opcja `-BrowserTests` dodaje test interfejsu w czterech niezależnych sesjach mobilnych Chrome (szerokości 320–412 px): tworzenie i dołączanie przez formularze, gotowość, obie gry, odpowiedzi gospodarza i gości, osobiste wyniki, tabele i koniec turnieju, odświeżenie sesji oraz brak poziomego przewijania. Wymaga modułu Node `playwright` i zainstalowanego Chrome; `PARTY_BROWSER_CHANNEL` pozwala wybrać inny kanał, np. `msedge`.
+Lokalny runner wykonuje pełny test API osobno dla `screen` i `phones`. Opcja `-BrowserTests` dodaje test interfejsu w czterech niezależnych sesjach mobilnych Chrome (szerokości 320–412 px): tworzenie i dołączanie przez formularze, gotowość, obie gry, odpowiedzi gospodarza i gości, osobiste wyniki, tabele i koniec turnieju, odświeżenie sesji oraz brak poziomego przewijania. Test przełącza też jedną sesję offline i ponownie online, sprawdza blokadę akcji do czasu synchronizacji oraz potwierdza odrzucenie odpowiedzi po wygaśnięciu serwerowego limitu. Wymaga modułu Node `playwright` i zainstalowanego Chrome; `PARTY_BROWSER_CHANNEL` pozwala wybrać inny kanał, np. `msedge`.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File tests\run_party_api_local.ps1 -BrowserTests
