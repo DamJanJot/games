@@ -4,6 +4,7 @@
   const apiUrl = 'api.php';
   const landingView = document.querySelector('[data-view="landing"]');
   const roomView = document.querySelector('[data-view="room"]');
+  const display = new PartyDisplay(roomView);
   const createForm = document.querySelector('[data-create-form]');
   const joinForm = document.querySelector('[data-join-form]');
   const roomCodeElement = document.querySelector('[data-room-code]');
@@ -247,6 +248,7 @@
 
   function renderState(state) {
     currentState = state;
+    display.update(state);
     const { room, players, you, game, leaderboard, tournament } = state;
     roomCodeElement.textContent = room.code;
     roomView.dataset.mode = room.mode;
