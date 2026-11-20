@@ -4,6 +4,18 @@
   --party-green: #25a18e;
 }
 
+.party-room:fullscreen {
+  overflow: auto;
+  width: 100%;
+  height: 100%;
+  padding: clamp(16px, 3vw, 48px);
+  background: #f5fbff;
+}
+
+.display-status {
+  color: var(--muted);
+}
+
 .party-shell {
   width: min(1180px, 100%);
   min-height: 100dvh;

@@ -83,6 +83,7 @@
                     <strong>Połączono</strong>
                 </span>
                 <button type="button" class="small-button" data-copy-link>Kopiuj link</button>
+                <button type="button" class="small-button" data-fullscreen aria-pressed="false" hidden>Pełny ekran</button>
                 <button type="button" class="small-button quiet" data-install hidden>Zainstaluj</button>
             </div>
         </div>
@@ -90,6 +91,7 @@
             <strong data-room-mode></strong>
             <span data-room-role></span>
         </div>
+        <p class="display-status" data-display-status role="status" aria-live="polite" hidden></p>
         <p class="room-guidance" data-room-guidance hidden></p>
         <p class="network-note" data-network-note role="status" aria-live="polite" hidden>Połączenie przerwane. Akcje są wstrzymane do czasu pobrania aktualnego stanu pokoju.</p>
 
@@ -266,6 +268,7 @@
 
     <p class="party-message" role="status" aria-live="polite" data-message></p>
 </main>
+<script src="party-display.js" defer></script>
 <script src="party-app.js" defer></script>
 </body>
 </html>
