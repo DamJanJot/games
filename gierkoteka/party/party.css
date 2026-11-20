@@ -1082,3 +1082,53 @@
     min-height: 74px;
   }
 }
+
+.room-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
+
+.room-context strong {
+  color: var(--party-purple);
+}
+
+.room-guidance {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.game-host-controls {
+  display: grid;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.game-host-controls p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.score-item.is-you {
+  border-color: var(--party-purple);
+  background: #f2edff;
+}
+
+.score-item > strong {
+  overflow-wrap: anywhere;
+}
+
+[data-mode="phones"] .quiz-layout,
+[data-mode="phones"] .tournament-layout {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 780px;
+  width: 100%;
+  justify-self: center;
+}
+
+[data-mode="phones"] .score-card {
+  position: static;
+}

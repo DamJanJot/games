@@ -49,7 +49,7 @@
                     </label>
                     <label class="mode-choice">
                         <input type="radio" name="mode" value="phones">
-                        <span><strong>Same telefony</strong><small>Nie potrzebujesz dodatkowego ekranu.</small></span>
+                        <span><strong>Same telefony</strong><small>Pytania, wyniki i ranking na każdym telefonie. Gospodarz też gra.</small></span>
                     </label>
                 </fieldset>
                 <button class="primary-button" type="submit">Utwórz pokój</button>
@@ -86,6 +86,11 @@
                 <button type="button" class="small-button quiet" data-install hidden>Zainstaluj</button>
             </div>
         </div>
+        <div class="room-context">
+            <strong data-room-mode></strong>
+            <span data-room-role></span>
+        </div>
+        <p class="room-guidance" data-room-guidance hidden></p>
         <p class="network-note" data-network-note role="status" aria-live="polite" hidden>Połączenie przerwane. Akcje są wstrzymane do czasu pobrania aktualnego stanu pokoju.</p>
 
         <div class="room-layout" data-room-stage="lobby">
@@ -176,7 +181,11 @@
                     <p class="quiz-your-points" data-quiz-your-points></p>
                 </div>
                 <p class="quiz-waiting" data-quiz-waiting></p>
-                <button class="primary-button quiz-advance" type="button" data-game-advance hidden>Pokaż wyniki</button>
+                <div class="game-host-controls" data-game-host-controls hidden>
+                    <strong>Sterowanie gospodarza</strong>
+                    <p>Wynik pojawi się po wszystkich odpowiedziach lub po upływie czasu. Możesz też zakończyć pytanie wcześniej.</p>
+                    <button class="primary-button quiz-advance" type="button" data-game-advance hidden>Pokaż wyniki</button>
+                </div>
             </section>
 
             <aside class="score-card">
@@ -208,7 +217,11 @@
                     <p class="quiz-your-points" data-higher-your-points></p>
                 </div>
                 <p class="quiz-waiting" data-higher-waiting></p>
-                <button class="primary-button quiz-advance" type="button" data-game-advance hidden>Pokaż wyniki</button>
+                <div class="game-host-controls" data-game-host-controls hidden>
+                    <strong>Sterowanie gospodarza</strong>
+                    <p>Wynik pojawi się po wszystkich odpowiedziach lub po upływie czasu. Możesz też zakończyć pytanie wcześniej.</p>
+                    <button class="primary-button quiz-advance" type="button" data-game-advance hidden>Pokaż wyniki</button>
+                </div>
             </section>
 
             <aside class="score-card">
