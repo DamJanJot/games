@@ -22,9 +22,9 @@ if (!$connection['pdo'] instanceof PDO) {
 
 $pdo = $connection['pdo'];
 try {
-    party_ensure_schema($pdo);
+    party_check_schema($pdo);
 } catch (Throwable $error) {
-    party_fail('Nie udało się przygotować tabel Trybu Party.', 503, 'schema_unavailable');
+    party_fail('Schemat Trybu Party wymaga przygotowania przez administratora.', 503, 'schema_unavailable');
 }
 
 $action = trim((string)($_GET['action'] ?? 'state'));

@@ -189,120 +189,28 @@ function party_shared_db_config(array $fileValues, string $expectedName, ?array 
     ];
 }
 
+// DDL is executed explicitly by the administrator, never by an API request.
+function party_schema_statements(): array
+{
+    return array_values(array_filter(array_map('trim', explode(';', file_get_contents(__DIR__ . '/setup.sql')))));
+}
+
 function party_ensure_schema(PDO $pdo): void
 {
-    $pdo->exec(<<<'SQL'
-CREATE TABLE IF NOT EXISTS gk_party_rooms (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    room_code CHAR(6) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE,
-    status VARCHAR(20) NOT NULL DEFAULT 'lobby',
-    play_mode VARCHAR(20) NOT NULL DEFAULT 'screen',
-    host_player_id BIGINT UNSIGNED NULL,
-    current_game_key VARCHAR(40) NULL,
-    round_number INT UNSIGNED NOT NULL DEFAULT 0,
-    state_version BIGINT UNSIGNED NOT NULL DEFAULT 1,
-    max_players TINYINT UNSIGNED NOT NULL DEFAULT 8,
-    settings_json JSON NULL,
-    expires_at DATETIME NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_gk_party_rooms_expires (expires_at),
-    INDEX idx_gk_party_rooms_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci
-SQL);
+    foreach (party_schema_statements() as $statement) {
+        $pdo->exec($statement);
+    }
+}
 
-    $pdo->exec(<<<'SQL'
-CREATE TABLE IF NOT EXISTS gk_party_players (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    room_id BIGINT UNSIGNED NOT NULL,
-    token_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE,
-    nickname VARCHAR(24) NOT NULL,
-    role VARCHAR(20) NOT NULL DEFAULT 'player',
-    color CHAR(7) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-    seat SMALLINT UNSIGNED NOT NULL,
-    score_total INT NOT NULL DEFAULT 0,
-    status VARCHAR(20) NOT NULL DEFAULT 'connected',
-    is_ready TINYINT(1) NOT NULL DEFAULT 0,
-    last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_gk_party_players_room FOREIGN KEY (room_id) REFERENCES gk_party_rooms(id) ON DELETE CASCADE,
-    UNIQUE KEY uniq_party_player_seat (room_id, seat),
-    INDEX idx_gk_party_players_room_status (room_id, status),
-    INDEX idx_gk_party_players_last_seen (last_seen_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci
-SQL);
-
-    $pdo->exec(<<<'SQL'
-CREATE TABLE IF NOT EXISTS gk_party_rounds (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    room_id BIGINT UNSIGNED NOT NULL,
-    round_number INT UNSIGNED NOT NULL,
-    game_key VARCHAR(40) NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'active',
-    current_step INT UNSIGNED NOT NULL DEFAULT 0,
-    config_json JSON NULL,
-    state_json JSON NULL,
-    started_at DATETIME(3) NULL,
-    ends_at DATETIME(3) NULL,
-    finished_at DATETIME(3) NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_gk_party_rounds_room FOREIGN KEY (room_id) REFERENCES gk_party_rooms(id) ON DELETE CASCADE,
-    UNIQUE KEY uniq_party_room_round (room_id, round_number),
-    INDEX idx_gk_party_rounds_room_status (room_id, status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci
-SQL);
-
-    $pdo->exec(<<<'SQL'
-CREATE TABLE IF NOT EXISTS gk_party_round_scores (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    round_id BIGINT UNSIGNED NOT NULL,
-    player_id BIGINT UNSIGNED NOT NULL,
-    points INT NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_gk_party_round_scores_round FOREIGN KEY (round_id) REFERENCES gk_party_rounds(id) ON DELETE CASCADE,
-    CONSTRAINT fk_gk_party_round_scores_player FOREIGN KEY (player_id) REFERENCES gk_party_players(id) ON DELETE CASCADE,
-    UNIQUE KEY uniq_party_round_player_score (round_id, player_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci
-SQL);
-
-    $pdo->exec(<<<'SQL'
-CREATE TABLE IF NOT EXISTS gk_party_quiz_answers (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    round_id BIGINT UNSIGNED NOT NULL,
-    player_id BIGINT UNSIGNED NOT NULL,
-    question_index INT UNSIGNED NOT NULL,
-    answer_index TINYINT UNSIGNED NOT NULL,
-    is_correct TINYINT(1) NOT NULL DEFAULT 0,
-    points INT NOT NULL DEFAULT 0,
-    points_applied TINYINT(1) NOT NULL DEFAULT 0,
-    response_ms INT UNSIGNED NOT NULL DEFAULT 0,
-    answered_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    CONSTRAINT fk_gk_party_quiz_answers_round FOREIGN KEY (round_id) REFERENCES gk_party_rounds(id) ON DELETE CASCADE,
-    CONSTRAINT fk_gk_party_quiz_answers_player FOREIGN KEY (player_id) REFERENCES gk_party_players(id) ON DELETE CASCADE,
-    UNIQUE KEY uniq_party_quiz_answer (round_id, player_id, question_index),
-    INDEX idx_party_quiz_question (round_id, question_index)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci
-SQL);
-
-    $pdo->exec(<<<'SQL'
-CREATE TABLE IF NOT EXISTS gk_party_higher_lower_answers (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    round_id BIGINT UNSIGNED NOT NULL,
-    player_id BIGINT UNSIGNED NOT NULL,
-    card_index INT UNSIGNED NOT NULL,
-    choice_value VARCHAR(10) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-    is_correct TINYINT(1) NOT NULL DEFAULT 0,
-    points INT NOT NULL DEFAULT 0,
-    points_applied TINYINT(1) NOT NULL DEFAULT 0,
-    response_ms INT UNSIGNED NOT NULL DEFAULT 0,
-    answered_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    CONSTRAINT fk_gk_party_higher_lower_answers_round FOREIGN KEY (round_id) REFERENCES gk_party_rounds(id) ON DELETE CASCADE,
-    CONSTRAINT fk_gk_party_higher_lower_answers_player FOREIGN KEY (player_id) REFERENCES gk_party_players(id) ON DELETE CASCADE,
-    UNIQUE KEY uniq_party_higher_lower_answer (round_id, player_id, card_index),
-    INDEX idx_party_higher_lower_card (round_id, card_index)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_polish_ci
-SQL);
+function party_check_schema(PDO $pdo): void
+{
+    // Read every declared column. No CREATE/ALTER privileges are needed by the API.
+    foreach (party_schema_statements() as $statement) {
+        preg_match('/CREATE TABLE IF NOT EXISTS (gk_party_[a-z_]+) \((.*)\) ENGINE=/s', $statement, $table);
+        if (!$table) {
+            throw new RuntimeException('Invalid Party schema definition.');
+        }
+        preg_match_all('/^    ([a-z][a-z_]+) [A-Z]/m', $table[2], $columns);
+        $pdo->query('SELECT ' . implode(', ', $columns[1]) . ' FROM ' . $table[1] . ' LIMIT 0');
+    }
 }
